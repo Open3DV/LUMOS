@@ -1,0 +1,15 @@
+cmd/x64/
+Debug/
+*.zip
+SDK/x64/
+test/x64/
+x64/
+SDK/build/
+.vs/
+example/out/
+temp/
+ReleaseDir/
+example/laser_3d_cam_sdk.lib
+example/laser_3d_cam_sdk.dll
+*.log
+example/libopen_cam3d_sdk.so

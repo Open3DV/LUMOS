@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{62B5C21A-0319-47ED-B7E7-E8518CA53722}</ProjectGuid>
+    <Keyword>QtVS_v304</Keyword>
+    <QtMsBuild Condition="'$(QtMsBuild)'=='' OR !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt_defaults.props')">
+    <Import Project="$(QtMsBuild)\qt_defaults.props" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="QtSettings">
+    <QtInstall>$(DefaultQtVersion)</QtInstall>
+    <QtModules>core;xml;network;gui;widgets;printsupport;concurrent</QtModules>
+    <QtBuildConfig>debug</QtBuildConfig>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="QtSettings">
+    <QtModules>core;xml;gui;widgets;printsupport;concurrent</QtModules>
+    <QtBuildConfig>release</QtBuildConfig>
+    <QtInstall>msvc2017_64</QtInstall>
+  </PropertyGroup>
+  <Target Name="QtMsBuildNotFound" BeforeTargets="CustomBuild;ClCompile" Condition="!Exists('$(QtMsBuild)\qt.targets') or !Exists('$(QtMsBuild)\qt.props')">
+    <Message Importance="High" Text="QtMsBuild: could not locate qt.targets, qt.props; project may not build correctly." />
+  </Target>
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(QtMsBuild)\Qt.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+    <LibraryPath>$(ProjectDir)../3rdparty/ConfiguringIP;$(ProjectDir)../3rdparty/opencv420/lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)../3rdparty/ConfiguringIP;$(ProjectDir)../3rdparty/opencv420/include;$(IncludePath)</IncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
+    <IncludePath>$(ProjectDir)../3rdparty/ConfiguringIP;$(ProjectDir)../3rdparty/opencv420/include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)../3rdparty/ConfiguringIP;$(ProjectDir)../3rdparty/opencv420/lib;$(LibraryPath)</LibraryPath>
+    <TargetName>laser_3d_cam_gui</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Link>
+      <AdditionalDependencies>$(TargetDir)laser_3d_cam_sdk.lib;enumerate.lib;opencv_calib3d420.lib;opencv_core420.lib;opencv_dnn420.lib;opencv_features2d420.lib;opencv_flann420.lib;opencv_gapi420.lib;opencv_highgui420.lib;opencv_imgcodecs420.lib;opencv_imgproc420.lib;opencv_ml420.lib;opencv_objdetect420.lib;opencv_photo420.lib;opencv_stitching420.lib;opencv_ts420.lib;opencv_video420.lib;opencv_videoio420.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>mkdir $(TargetDir)imageformats
+copy $(ProjectDir)..\3rdparty\Qt5.9.3\bin\imageformats\*.dll $(TargetDir)imageformats
+del $(TargetDir)imageformats\*d.dll
+mkdir $(TargetDir)platforms
+copy $(ProjectDir)..\3rdparty\Qt5.9.3\bin\platforms\qdirect2d.dll $(TargetDir)platforms
+copy $(ProjectDir)..\3rdparty\Qt5.9.3\bin\platforms\qminimal.dll $(TargetDir)platforms
+copy $(ProjectDir)..\3rdparty\Qt5.9.3\bin\platforms\qoffscreen.dll $(TargetDir)platforms
+copy $(ProjectDir)..\3rdparty\Qt5.9.3\bin\platforms\qwindows.dll $(TargetDir)platforms 
+copy $(ProjectDir)..\3rdparty\Qt5.9.3\bin\Qt5Core.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\Qt5.9.3\bin\Qt5Xml.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\Qt5.9.3\bin\Qt5Widgets.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\Qt5.9.3\bin\Qt5Gui.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\Qt5.9.3\bin\Qt5Network.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\Qt5.9.3\bin\Qt5Test.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_core420.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_highgui420.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_videoio420.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_imgcodecs420.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_imgproc420.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_calib3d420.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_features2d420.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_flann420.dll $(TargetDir)
+copy $(ProjectDir)..\3rdparty\ConfiguringIP\enumerate.dll $(TargetDir)</Command>
+    </PostBuildEvent>
+    <ClCompile />
+    <ClCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Link>
+      <AdditionalDependencies>$(TargetDir)open_cam3d_sdkd.lib;enumerated.lib;opencv_calib3d420d.lib;opencv_core420d.lib;opencv_dnn420d.lib;opencv_features2d420d.lib;opencv_flann420d.lib;opencv_gapi420d.lib;opencv_highgui420d.lib;opencv_imgcodecs420d.lib;opencv_imgproc420d.lib;opencv_ml420d.lib;opencv_objdetect420d.lib;opencv_photo420d.lib;opencv_stitching420d.lib;opencv_ts420d.lib;opencv_video420d.lib;opencv_videoio420d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <ClCompile>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <PostBuildEvent>
+      <Command>
+copy $(ProjectDir)..\3rdparty\ConfiguringIP\enumerated.dll $(TargetDir)</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
+    <ClCompile>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'" Label="Configuration">
+    <ClCompile>
+      <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>None</DebugInformationFormat>
+      <Optimization>MaxSpeed</Optimization>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\firmware\easylogging++.cc" />
+    <ClCompile Include="..\firmware\system_config_settings.cpp" />
+    <ClCompile Include="..\sdk\socket_tcp.cpp" />
+    <ClCompile Include="about_gui.cpp" />
+    <ClCompile Include="calibrate_function.cpp" />
+    <ClCompile Include="calibration_param_gui.cpp" />
+    <ClCompile Include="camera_capture_gui.cpp" />
+    <ClCompile Include="camera_gui.cpp" />
+    <ClCompile Include="file_io_function.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="outlier_removal_gui.cpp" />
+    <ClCompile Include="PrecisionTest.cpp" />
+    <ClCompile Include="save_gui.cpp" />
+    <ClCompile Include="select_calibration_board_gui.cpp" />
+    <ClCompile Include="settings_file_function.cpp" />
+    <ClCompile Include="update_firmware_gui.cpp" />
+    <ClCompile Include="update_opencam3d.cpp" />
+    <ClCompile Include="waiting_gui.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtUic Include="about.ui" />
+    <QtUic Include="calibration_param_gui.ui" />
+    <QtUic Include="camera_capture_gui.ui" />
+    <QtUic Include="camera_gui.ui" />
+    <QtUic Include="outlier_removal_gui.ui" />
+    <QtUic Include="save_gui.ui" />
+    <QtUic Include="select_calibration_board_gui.ui" />
+    <QtUic Include="update_firmware_gui.ui" />
+    <QtUic Include="waiting_gui.ui" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtMoc Include="camera_gui.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\firmware\easylogging++.h" />
+    <ClInclude Include="about.h" />
+    <QtMoc Include="about_gui.h" />
+    <QtMoc Include="save_gui.h" />
+    <ClInclude Include="update_opencam3d.h" />
+    <QtMoc Include="waiting_gui.h" />
+    <ClInclude Include="x64\Release\uic\ui_update_firmware_gui.h" />
+    <QtMoc Include="update_firmware_gui.h" />
+    <QtMoc Include="select_calibration_board_gui.h" />
+    <QtMoc Include="calibration_param_gui.h" />
+    <QtMoc Include="outlier_removal_gui.h" />
+    <ClInclude Include="PrecisionTest.h" />
+    <ClInclude Include="resource.h" />
+    <QtMoc Include="camera_capture_gui.h" />
+    <ClInclude Include="file_io_function.h" />
+    <QtMoc Include="settings_file_function.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <QtRcc Include="dexforce_camera_gui.qrc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="gui.rc" />
+    <ResourceCompile Include="myapp.rc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
+    <Import Project="$(QtMsBuild)\qt.targets" />
+  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
