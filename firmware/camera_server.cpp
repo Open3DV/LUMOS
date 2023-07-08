@@ -1965,7 +1965,8 @@ int main()
     } while (server_sock == DF_FAILED);
 
     LOG(INFO) << "listening";
-
+    scan3d_.captureFrame01();
+    scan3d_.captureFrame01();
     while (true)
     {
         int client_sock = accept_new_connection(server_sock);

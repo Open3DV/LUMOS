@@ -505,17 +505,27 @@ bool Scan3D::captureTextureImage(int model,float exposure,unsigned char* buff)
 
 bool Scan3D::captureRaw01(unsigned char* buff)
 {
+    LOG(INFO) << "setPixelFormat(8)";
+
+    camera_left_->setPixelFormat(8);
+    camera_right_->setPixelFormat(8);
 
     if (!camera_left_->streamOn())
     {
         LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
         return false;
     }
     if (!camera_right_->streamOn())
     {
         LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
         return false;
     }
+
+
 
     projector_->project();
 
@@ -541,10 +551,12 @@ bool Scan3D::captureRaw01(unsigned char* buff)
         if (!camera_left_->grap(img_ptr_left))
         {
             camera_left_->streamOff();
+            camera_right_->streamOff();
             return false;
         }
         if (!camera_right_->grap(img_ptr_right))
         {
+            camera_left_->streamOff();
             camera_right_->streamOff();
             return false;
         }
@@ -562,6 +574,63 @@ bool Scan3D::captureRaw01(unsigned char* buff)
     //    captureTextureImage(generate_brightness_model_, generate_brightness_exposure_, img_ptr_left);
     //    memcpy(buff + img_size * 19, img_ptr_left, img_size);
     //}
+
+    delete[] img_ptr_left;
+    delete[] img_ptr_right;
+    camera_left_->setPixelFormat(12);
+    camera_right_->setPixelFormat(12);
+
+    return true;
+}
+
+bool Scan3D::captureRaw01_16bit(unsigned short* buff)
+{
+
+    if (!camera_left_->streamOn())
+    {
+        LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
+        return false;
+    }
+    if (!camera_right_->streamOn())
+    {
+        LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
+        return false;
+    }
+
+    projector_->project();
+
+    int img_size = image_width_*image_height_*sizeof(unsigned short);
+
+    unsigned short *img_ptr_left= new unsigned char[img_size];
+    unsigned short *img_ptr_right= new unsigned char[img_size];
+
+    for (int i = 0; i < 14; i++)
+    {
+        LOG(INFO)<<"grap "<<i<<" image:";
+        if (!camera_left_->grap(img_ptr_left))
+        {
+            camera_left_->streamOff();
+            camera_right_->streamOff();
+            return false;
+        }
+        if (!camera_right_->grap(img_ptr_right))
+        {
+            camera_left_->streamOff();
+            camera_right_->streamOff();
+            return false;
+        }
+ 
+        memcpy(buff+img_size*i, img_ptr_left, img_size);
+        memcpy(buff+img_size*(i+14), img_ptr_right, img_size);
+  
+    }
+
+    camera_left_->streamOff();
+    camera_right_->streamOff();
 
     delete[] img_ptr_left;
     delete[] img_ptr_right;
@@ -646,11 +715,15 @@ int Scan3D::captureFrame01()
     if (!camera_left_->streamOn())
     {
         LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
         return DF_ERROR_CAMERA_STREAM;
     }
     if (!camera_right_->streamOn())
     {
         LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
         return DF_ERROR_CAMERA_STREAM;
     }
 

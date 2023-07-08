@@ -40,6 +40,8 @@ public:
     bool captureTextureImage(int model,float exposure,unsigned char* buff);
 
     bool captureRaw01(unsigned char* buff);
+
+    bool captureRaw01_16bit(unsigned short* buff);
     
     int captureFrame01();
 
