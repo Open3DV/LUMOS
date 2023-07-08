@@ -16,8 +16,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test", "test\test.vcxproj",
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "gui", "gui\gui.vcxproj", "{62B5C21A-0319-47ED-B7E7-E8518CA53722}"
+	ProjectSection(ProjectDependencies) = postProject
+		{390B4D1D-B6D2-4B18-8695-1649BF7F7ECC} = {390B4D1D-B6D2-4B18-8695-1649BF7F7ECC}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "example", "example\example.vcxproj", "{86433408-5189-4A0F-8B79-8434BBCDDD38}"
+	ProjectSection(ProjectDependencies) = postProject
+		{390B4D1D-B6D2-4B18-8695-1649BF7F7ECC} = {390B4D1D-B6D2-4B18-8695-1649BF7F7ECC}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
