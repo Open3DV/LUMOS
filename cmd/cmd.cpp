@@ -38,31 +38,34 @@ laser_3d_cam.exe --set-calib-param --ip 192.168.x.x --path ./param.txt\n\
 4.Get raw images (Mode 01): \n\
 laser_3d_cam.exe --get-raw-01 --ip 192.168.x.x --path ./raw01_image_dir\n\
 \n\
-5.Set Brightness Param: \n\
+5.Get raw images (Mode 02): \n\
+laser_3d_cam.exe --get-raw-02 --ip 192.168.x.x --path ./raw02_image_dir\n\
+\n\
+6.Set Brightness Param: \n\
 laser_3d_cam.exe --set-brightness-param --ip 192.168.x.x --model 2 --exposure 12000\n\
 \n\
-6.Get Brightness Param: \n\
+7.Get Brightness Param: \n\
 laser_3d_cam.exe --get-brightness-param --ip 192.168.x.x\n\
 \n\
-7.Set Camera Exposure Param: \n\
+8.Set Camera Exposure Param: \n\
 laser_3d_cam.exe --set-camera-exposure-param --ip 192.168.x.x --exposure 12000\n\
 \n\
-8.Get Camera Exposure Param: \n\
+9.Get Camera Exposure Param: \n\
 laser_3d_cam.exe --get-camera-exposure-param --ip 192.168.x.x\n\
 \n\
-11.Set Camera Gain: \n\
+10.Set Camera Gain: \n\
 laser_3d_cam.exe --set-camera-gain --ip 192.168.x.x --gain 1023\n\
 \n\
-12.Get Camera Gain: \n\
+11.Get Camera Gain: \n\
 laser_3d_cam.exe --get-camera-gain --ip 192.168.x.x\n\
 \n\
-19.Get Frame test:\n\
+12.Get Frame test:\n\
 laser_3d_cam.exe --get-frame-test --ip 192.168.x.x --path ./frame_test\n\
 \n\
-20.Set HDR Param: \n\
+13.Set HDR Param: \n\
 laser_3d_cam.exe --set-hdr-param --ip 192.168.x.x --path ./hdr_params.xml\n\
 \n\
-21.Get Frame 01 HDR:\n\
+14.Get Frame 01 HDR:\n\
 laser_3d_cam.exe --get-frame-01-hdr --ip 192.168.x.x --path ./frame_01_hdr\n\
 \n\
 ";
@@ -76,25 +79,28 @@ laser_3d_cam.exe --get-frame-01 --ip 192.168.x.x --path ./frame_01\n\
 2.Get raw images (Mode 01): 采集并保存所有的条纹图片\n\
 laser_3d_cam.exe --get-raw-01 --ip 192.168.x.x --path ./raw01_image_dir\n\
 \n\
-3.Set Camera Exposure Param: 设置相机曝光时间（10000us - 100000us）\n\
+3.Get raw images (Mode 02): 采集并保存所有的条纹图片\n\
+laser_3d_cam.exe --get-raw-02 --ip 192.168.x.x --path ./raw02_image_dir\n\
+\n\
+4.Set Camera Exposure Param: 设置相机曝光时间（10000us - 100000us）\n\
 laser_3d_cam.exe --set-camera-exposure-param --ip 192.168.x.x --exposure 12000\n\
 \n\
-4.Get Camera Exposure Param: 获取相机曝光时间\n\
+5.Get Camera Exposure Param: 获取相机曝光时间\n\
 laser_3d_cam.exe --get-camera-exposure-param --ip 192.168.x.x\n\
 \n\
-5.Set Camera Gain: 设置相机增益\n\
+6.Set Camera Gain: 设置相机增益\n\
 laser_3d_cam.exe --set-camera-gain --ip 192.168.x.x --gain 1023\n\
 \n\
-6.Get Camera Gain: 获取相机增益\n\
+7.Get Camera Gain: 获取相机增益\n\
 laser_3d_cam.exe --get-camera-gain --ip 192.168.x.x\n\
 \n\
-7.Get Frame test: 获取相机的一帧图像亮度图、深度图、点云以及条纹图\n\
+8.Get Frame test: 获取相机的一帧图像亮度图、深度图、点云以及条纹图\n\
 laser_3d_cam.exe --get-frame-test --ip 192.168.x.x --path ./frame_test\n\
 \n\
-8.Set HDR Param: 设置激光的动态曝光亮度参数（运行得到默认的文件：hdr_params.xml；修改文件：hdr_params.xml；亮度：0-1023，组数：2-5，目前不支持曝光时间设置，曝光时间统一为“Set Camera Exposure Param”所指定；要求：1.HDR最后一组的亮度应为1023最亮；2.HDR的亮度应为递增）\n\
+9.Set HDR Param: 设置激光的动态曝光亮度参数（运行得到默认的文件：hdr_params.xml；修改文件：hdr_params.xml；亮度：0-1023，组数：2-5，目前不支持曝光时间设置，曝光时间统一为“Set Camera Exposure Param”所指定；要求：1.HDR最后一组的亮度应为1023最亮；2.HDR的亮度应为递增）\n\
 laser_3d_cam.exe --set-hdr-param --ip 192.168.x.x --path ./hdr_params.xml\n\
 \n\
-9.Get Frame 01 HDR: 获取一帧的亮度数据\n\
+10.Get Frame 01 HDR: 获取一帧的亮度数据\n\
 laser_3d_cam.exe --get-frame-01-hdr --ip 192.168.x.x --path ./frame_01_hdr\n\
 \n\
 ";
@@ -105,12 +111,14 @@ int get_frame_01_hdr(const char* ip, const char* frame_path);
 int get_frame_test(const char* ip, const char* frame_path);
 void save_frame(int image_height, int image_width, float* depth_buffer, unsigned char* bright_buffer, const char* frame_path);
 void save_images(const char* raw_image_dir, unsigned char* buffer, int width, int height, int image_num);
+void save_images_16bit(const char* raw_image_dir, unsigned short* buffer, int width, int height, int image_num);
 void save_color_point_cloud(float* point_cloud_buffer, unsigned char* brightness_buffer, const char* pointcloud_path);
 void write_fbin(std::ofstream& out, float val);
 void write_fbin(std::ofstream& out, unsigned char val);
 bool SaveBinPointsToPly(cv::Mat deep_mat, string path, cv::Mat texture_map);
 int on_dropped(void* param);
 int get_raw_01(const char* ip, const char* raw_image_dir);
+int get_raw_02(const char* ip, const char* raw_image_dir);
 int get_calib_param(const char* ip, const char* calib_param_path);
 int set_calib_param(const char* ip, const char* calib_param_path);
 int set_generate_brightness_param(const char* ip, int model, float exposure);
@@ -135,6 +143,7 @@ enum opt_set
 	GET_CALIB_PARAM,
 	SET_CALIB_PARAM,
 	GET_RAW_01,
+	GET_RAW_02,
 	GET_FRAME_01,
 	GET_FRAME_01_HDR,
 	GET_FRAME_TEST,
@@ -165,6 +174,7 @@ static struct option long_options[] =
 	{"get-calib-param",no_argument,NULL,GET_CALIB_PARAM},
 	{"set-calib-param",no_argument,NULL,SET_CALIB_PARAM},
 	{"get-raw-01",no_argument,NULL,GET_RAW_01},
+	{"get-raw-02",no_argument,NULL,GET_RAW_02},
 	{"get-frame-01",no_argument,NULL,GET_FRAME_01},
 	{"get-frame-01-hdr",no_argument,NULL,GET_FRAME_01_HDR},
 	{"get-frame-test",no_argument,NULL,GET_FRAME_TEST},
@@ -243,6 +253,10 @@ int main(int argc, char* argv[])
 		break;
 	case GET_RAW_01:
 		get_raw_01(camera_id, path);
+		break;
+	break;
+	case GET_RAW_02:
+		get_raw_02(camera_id, path);
 		break;
 	break;
 	case GET_FRAME_01:
@@ -480,6 +494,24 @@ void save_images(const char* raw_image_dir, unsigned char* buffer, int width, in
 		cv::Mat image(height, width, CV_8UC1, buffer + (long)(image_size * i));
 		ss << std::setw(2) << std::setfill('0') << i;
 		std::string filename = folderPath + "/phase" + ss.str() + ".bmp";
+		cv::imwrite(filename, image);
+	}
+}
+
+void save_images_16bit(const char* raw_image_dir, unsigned short* buffer, int width, int height, int image_num)
+{
+	std::string folderPath = raw_image_dir;
+	std::string mkdir_cmd = std::string("mkdir ") + folderPath;
+	system(mkdir_cmd.c_str());
+
+	int image_size = width * height * sizeof(unsigned short);
+
+	for (int i = 0; i < image_num; i++)
+	{
+		std::stringstream ss;
+		cv::Mat image(height, width, CV_16UC1, buffer + (long)(image_size * i));
+		ss << std::setw(2) << std::setfill('0') << i;
+		std::string filename = folderPath + "/phase" + ss.str() + ".tiff";
 		cv::imwrite(filename, image);
 	}
 }
@@ -1142,15 +1174,44 @@ int get_raw_01(const char* ip, const char* raw_image_dir)
 	int width, height;
 	DfGetCameraResolution(&width, &height);
 
-	int capture_num = 28 + 4;
+	int capture_num = 28;
 
 	int image_size = width * height;
 
-	unsigned char* raw_buf = new unsigned char[(long)(image_size * capture_num)];
+	unsigned char* raw_buf = new unsigned char[image_size * capture_num];
 
 	ret = DfGetCameraRawData01(raw_buf, image_size * capture_num);
 
 	save_images(raw_image_dir, raw_buf, width, height, capture_num);
+
+	delete[] raw_buf;
+
+	DfDisconnectNet();
+	return 1;
+}
+
+int get_raw_02(const char* ip, const char* raw_image_dir)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnectNet(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+	int width, height;
+	DfGetCameraResolution(&width, &height);
+
+	int capture_num = 28;
+
+	int image_size = width * height * sizeof(unsigned short);
+
+	unsigned short* raw_buf = new unsigned short[(long)image_size * capture_num];
+
+	ret = DfGetCameraRawData02(raw_buf, image_size * capture_num);
+
+	save_images_16bit(raw_image_dir, raw_buf, width, height, capture_num);
 
 	delete[] raw_buf;
 

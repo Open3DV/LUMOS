@@ -275,6 +275,44 @@ int handle_cmd_get_raw_01(int client_sock)
 
 }
 
+int handle_cmd_get_raw_02_16bit(int client_sock)
+{
+
+    if (check_token(client_sock) == DF_FAILED)
+    {
+        return DF_FAILED;
+    }
+
+    int image_num = 28;
+
+    int width = 0;
+    int height = 0;
+
+    scan3d_.getCameraResolution(width, height);
+
+    int buffer_size = height * width * image_num * sizeof(unsigned short);
+    unsigned short* buffer = new unsigned short[buffer_size];
+
+    scan3d_.captureRaw01_16bit(buffer);
+
+    LOG(INFO) << "start send image, buffer_size= " << buffer_size;
+    int ret = send_buffer(client_sock, (char*)buffer, buffer_size);
+
+    LOG(INFO) << "ret= " << ret;
+
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!";
+        delete[] buffer;
+        return DF_FAILED;
+    }
+
+    LOG(INFO) << "image sent!";
+
+    delete[] buffer;
+    return DF_SUCCESS;
+
+}
 
 int handle_cmd_get_frame_01_parallel(int client_sock)
 {
@@ -1681,6 +1719,10 @@ int handle_commands(int client_sock)
     case DF_CMD_GET_RAW_01:
         LOG(INFO) << "DF_CMD_GET_RAW_01";
         ret = handle_cmd_get_raw_01(client_sock);
+        break;
+    case DF_CMD_GET_RAW_02:
+        LOG(INFO) << "DF_CMD_GET_RAW_02";
+        ret = handle_cmd_get_raw_02_16bit(client_sock);
         break;
     case DF_CMD_GET_FRAME_01:
         LOG(INFO) << "DF_CMD_GET_FRAME_01";

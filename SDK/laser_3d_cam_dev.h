@@ -115,11 +115,18 @@ extern "C"
 		unsigned char* brightness, int brightness_buf_size, unsigned char* patterns, int patterns_buf_size);
 
 	//函数名： DfGetCameraRawData01
-	//功能： 采集一组相移图，一共19幅，12个四步相移条纹图 + 6个六步相移条纹图 + 1个亮度图
-	//输入参数：raw_buf_size（19张8位图的尺寸）
+	//功能： 采集一组8bit条纹图，一共28张，4张相移条纹图 + 8张格雷码图 + 2张黑白图
+	//输入参数：raw_buf_size（28张8位图的尺寸）
 	//输出参数：raw
 	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
 	DF_SDK_API int DfGetCameraRawData01(unsigned char* raw, int raw_buf_size);
+
+	//函数名： DfGetCameraRawData02
+	//功能： 采集一组16bit条纹图，一共28张，4张相移条纹图 + 8张格雷码图 + 2张黑白图
+	//输入参数：raw_buf_size（28张16位图的尺寸）
+	//输出参数：raw
+	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
+	DF_SDK_API int DfGetCameraRawData02(unsigned short* raw, int raw_buf_size);
 
 	//函数名： DfGetParamSmoothing
 	//功能： 获取点云平滑参数

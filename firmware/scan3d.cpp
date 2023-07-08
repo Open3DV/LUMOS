@@ -605,8 +605,8 @@ bool Scan3D::captureRaw01_16bit(unsigned short* buff)
 
     int img_size = image_width_*image_height_*sizeof(unsigned short);
 
-    unsigned short *img_ptr_left= new unsigned char[img_size];
-    unsigned short *img_ptr_right= new unsigned char[img_size];
+    unsigned short *img_ptr_left= new unsigned short[img_size];
+    unsigned short *img_ptr_right= new unsigned short[img_size];
 
     for (int i = 0; i < 14; i++)
     {
