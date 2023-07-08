@@ -293,13 +293,6 @@ DF_SDK_API int DfConnectNet(const char* ip);
 //返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
 DF_SDK_API int DfDisconnectNet();
 
-//函数名： DfSetBasePlanePhase
-//功能： 设置相机增益
-//输入参数：无
-//输出参数： 无
-//返回值： 类型（int）:返回0表示设置参数成功;否则失败。
-DF_SDK_API int DfSetBasePlanePhase();
-
 //函数名： DfSetParamGenerateBrightness
 //功能： 设置生成亮度图参数
 //输入参数：model(1:与条纹图同步连续曝光、2：单独发光曝光、3：不发光单独曝光)、exposure(亮度图曝光时间)
@@ -320,14 +313,6 @@ DF_SDK_API int DfGetParamGenerateBrightness(int& model, float& exposure);
 //输出参数：point_cloud_map（点云）
 //返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
 DF_SDK_API int depthTransformPointcloud(float* depth_map, float* point_cloud_map);
-
-//函数名： DfGetRelativePhase
-//功能： 获取一帧数据（亮度图+相位图），基于Raw01的相移图
-//输入参数：phase_buf_size（相位图尺寸）、brightness_buf_size（亮度图尺寸）
-//输出参数：realtive_phase（深度图）、brightness（亮度图）
-//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
-DF_SDK_API int DfGetRelativePhase(float* realtive_phase, int phase_buf_size,
-	unsigned char* brightness, int brightness_buf_size);
 
 //函数名： DfGetCalibrationParam
 //功能：获取标定参数接口
@@ -363,48 +348,6 @@ DF_SDK_API int DfGetSystemConfigParam(struct SystemConfigParam& config_param);
 //输出参数：无
 //返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
 DF_SDK_API int DfSetSystemConfigParam(const struct SystemConfigParam& config_param);
-
-//函数名： DfSetTriggerOffset
-//功能： 设置补偿参数
-//输入参数：offset(补偿值)
-//输出参数： 无
-//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
-DF_SDK_API int DfSetTriggerOffset(float offset);
-
-//函数名： DfGetTriggerOffset
-//功能： 获取补偿参数
-//输入参数：无
-//输出参数：offset(补偿值)
-//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
-DF_SDK_API int DfGetTriggerOffset(float& offset);
-
-//函数名： DfEnableMiddleLineMode
-//功能： 使振镜停止在中间位置
-//输入参数：无
-//输出参数：无
-//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
-DF_SDK_API int DfEnableMiddleLineMode(int line_index);
-
-//函数名： DfDisableMiddleLineMode
-//功能： 终止使振镜停止在中间位置
-//输入参数：无
-//输出参数：无
-//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
-DF_SDK_API int DfDisableMiddleLineMode();
-
-//函数名： DfEnableSinglePatternProjection
-//功能： 循环投射固定相位图片
-//输入参数：无
-//输出参数：无
-//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
-DF_SDK_API int DfEnableSinglePatternProjection();
-
-//函数名： DfDisableSinglePatternProjection
-//功能： 终止循环投射固定相位图片
-//输入参数：无
-//输出参数：无
-//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
-DF_SDK_API int DfDisableSinglePatternProjection();
 
 //函数名： transformPointcloud
 //功能： 点云坐标系转换接口

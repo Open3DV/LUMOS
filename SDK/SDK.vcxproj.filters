@@ -32,7 +32,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="laser_3d_cam.h">
+    <ClInclude Include="laser_3d_cam_dev.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="socket_tcp.h">

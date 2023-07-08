@@ -4,7 +4,7 @@
 #include "ui_camera_capture_gui.h"
 #include "settings_file_function.h"
 #include <opencv2/core.hpp>
-#include "../SDK/laser_3d_cam.h"
+#include "../SDK/laser_3d_cam_dev.h"
 #include "calibrate_function.h"
 //#include "../firmware/system_config_settings.h"
 #include "../firmware/protocol.h"

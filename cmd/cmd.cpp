@@ -1,6 +1,6 @@
 #pragma once
 #ifdef _WIN32 
-#include "../SDK/laser_3d_cam.h" 
+#include "../SDK/laser_3d_cam_dev.h" 
 #include <windows.h>
 #elif __linux
 #include "../SDK/laser_3d_cam.h" 
@@ -50,29 +50,11 @@ laser_3d_cam.exe --set-camera-exposure-param --ip 192.168.x.x --exposure 12000\n
 8.Get Camera Exposure Param: \n\
 laser_3d_cam.exe --get-camera-exposure-param --ip 192.168.x.x\n\
 \n\
-9.Set Trigger Offset: \n\
-laser_3d_cam.exe --set-trigger-offset --ip 192.168.x.x --offset 1023\n\
-\n\
-10.Get Trigger Offset: \n\
-laser_3d_cam.exe --get-trigger-offset --ip 192.168.x.x\n\
-\n\
 11.Set Camera Gain: \n\
 laser_3d_cam.exe --set-camera-gain --ip 192.168.x.x --gain 1023\n\
 \n\
 12.Get Camera Gain: \n\
 laser_3d_cam.exe --get-camera-gain --ip 192.168.x.x\n\
-\n\
-13.Enable Middle Line Mode: \n\
-laser_3d_cam.exe --enable-middle-line --ip 192.168.x.x --line-index 32767\n\
-\n\
-14.Disable Middle Line Mode: \n\
-laser_3d_cam.exe --disable-middle-line --ip 192.168.x.x\n\
-\n\
-15.Enable Single Pattern Mode: \n\
-laser_3d_cam.exe --enable-single-pattern --ip 192.168.x.x\n\
-\n\
-16.Disable Single Pattern Mode: \n\
-laser_3d_cam.exe --disable-single-pattern --ip 192.168.x.x\n\
 \n\
 19.Get Frame test:\n\
 laser_3d_cam.exe --get-frame-test --ip 192.168.x.x --path ./frame_test\n\
@@ -117,11 +99,6 @@ laser_3d_cam.exe --get-frame-01-hdr --ip 192.168.x.x --path ./frame_01_hdr\n\
 \n\
 ";
 
-//float Q_matrix[16] = { 1, 0, 0, -761.02393,
-// 0, 1, 0, -779.80054,
-// 0, 0, 0, 1655.1462,
-// 0, 0, 0.0024818892, 1.2151936 };
-
 void help_with_version(const char* help);
 int get_frame_01(const char* ip, const char* frame_path);
 int get_frame_01_hdr(const char* ip, const char* frame_path);
@@ -142,12 +119,6 @@ int set_camera_exposure_param(const char* ip, float exposure);
 int get_camera_exposure_param(const char* ip, float& exposure);
 int set_camera_gain(const char* ip, float exposure);
 int get_camera_gain(const char* ip, float& exposure);
-int get_trigger_offset(const char* ip, float& offset);
-int set_trigger_offset(const char* ip, float offset);
-int enable_middle_line(const char* ip, int line_index);
-int disable_middle_line(const char* ip);
-int enable_single_pattern(const char* ip);
-int disable_single_pattern(const char* ip);
 int percentile(cv::Mat& image, int percent);
 bool depthToDepthColor(cv::Mat depth_map, cv::Mat& color_map, cv::Mat& grey_map, float low_z, float high_z);
 bool maskZMap(cv::Mat& z_map, cv::Mat mask);
@@ -176,14 +147,8 @@ enum opt_set
 	GET_CAMERA_EXPOSURE,
 	SET_CAMERA_GAIN,
 	GET_CAMERA_GAIN,
-	SET_TRIGGER_OFFSET,
-	GET_TRIGGER_OFFSET,
 	OFFSET,
 	GAIN,
-	ENABLE_MIDDLE_LINE,
-	DISABLE_MIDDLE_LINE,
-	ENABLE_SINGLE_PATTERN,
-	DISABLE_SINGLE_PATTERN,
 	LINE_INDEX,
 	SET_HDR_PARAM,
 };
@@ -210,12 +175,6 @@ static struct option long_options[] =
 	{"get-camera-exposure-param",no_argument,NULL,GET_CAMERA_EXPOSURE},
 	{"set-camera-gain",no_argument,NULL,SET_CAMERA_GAIN},
 	{"get-camera-gain",no_argument,NULL,GET_CAMERA_GAIN},
-	{"set-trigger-offset",no_argument,NULL,SET_TRIGGER_OFFSET},
-	{"get-trigger-offset",no_argument,NULL,GET_TRIGGER_OFFSET},
-	{"enable-middle-line",no_argument,NULL,ENABLE_MIDDLE_LINE},
-	{"disable-middle-line",no_argument,NULL,DISABLE_MIDDLE_LINE},
-	{"enable-single-pattern",no_argument,NULL,ENABLE_SINGLE_PATTERN},
-	{"disable-single-pattern",no_argument,NULL,DISABLE_SINGLE_PATTERN},
 	{"set-hdr-param",no_argument,NULL,SET_HDR_PARAM},
 };
 
@@ -331,39 +290,6 @@ int main(int argc, char* argv[])
 	{
 		float gain = 0;
 		get_camera_gain(camera_id, gain);
-	}
-	break;
-	case SET_TRIGGER_OFFSET:
-	{
-		float offset = std::atof(c_offset);
-		set_trigger_offset(camera_id, offset);
-	}
-	break;
-	case GET_TRIGGER_OFFSET:
-	{
-		float offset = 0;
-		get_trigger_offset(camera_id, offset);
-	}
-	break;
-	case ENABLE_MIDDLE_LINE:
-	{
-		int line_index = atoi(c_line_index);
-		enable_middle_line(camera_id, line_index);
-	}
-	break;
-	case DISABLE_MIDDLE_LINE:
-	{
-		disable_middle_line(camera_id);
-	}
-	break;
-	case ENABLE_SINGLE_PATTERN:
-	{
-		enable_single_pattern(camera_id);
-	}
-	break;
-	case DISABLE_SINGLE_PATTERN:
-	{
-		disable_single_pattern(camera_id);
 	}
 	break;
 	case SET_HDR_PARAM:
@@ -1376,56 +1302,6 @@ int get_camera_gain(const char* ip, float& gain)
 	std::cout << "camera gain: " << gain << std::endl;
 }
 
-int get_trigger_offset(const char* ip, float& offset)
-{
-	DfRegisterOnDropped(on_dropped);
-
-	int ret = DfConnectNet(ip);
-	if (ret == DF_FAILED)
-	{
-		return 0;
-	}
-
-
-	DfGetTriggerOffset(offset);
-
-
-	DfDisconnectNet();
-
-
-	std::cout << "trigger offset: " << offset << std::endl;
-}
-
-int set_trigger_offset(const char* ip, float offset)
-{
-	if (offset < 0)
-	{
-		std::cout << "offset param out of range!" << std::endl;
-		return 0;
-	}
-
-
-	DfRegisterOnDropped(on_dropped);
-
-	int ret = DfConnectNet(ip);
-	if (ret == DF_FAILED)
-	{
-		return 0;
-	}
-
-
-	DfSetTriggerOffset(offset);
-
-
-	DfDisconnectNet();
-
-
-	std::cout << "trigger offset: " << offset << std::endl;
-
-	return 1;
-}
-
-
 int get_generate_brightness_param(const char* ip, int& model, float& exposure)
 {
 
@@ -1498,86 +1374,6 @@ int set_calib_param(const char* ip, const char* calib_param_path)
 	DfDisconnectNet();
 	return 1;
 }
-
-int enable_middle_line(const char* ip, int line_index)
-{
-
-	DfRegisterOnDropped(on_dropped);
-
-	int ret = DfConnectNet(ip);
-	if (ret == DF_FAILED)
-	{
-		return 0;
-	}
-
-	DfEnableMiddleLineMode(line_index);
-
-	DfDisconnectNet();
-
-
-	std::cout << "enable middle line" << std::endl;
-	return 1;
-}
-
-int disable_middle_line(const char* ip)
-{
-	DfRegisterOnDropped(on_dropped);
-
-	int ret = DfConnectNet(ip);
-	if (ret == DF_FAILED)
-	{
-		return 0;
-	}
-
-	DfDisableMiddleLineMode();
-
-	DfDisconnectNet();
-
-
-	std::cout << "disable middle line" << std::endl;
-	return 1;
-}
-
-int enable_single_pattern(const char* ip)
-{
-
-	DfRegisterOnDropped(on_dropped);
-
-	int ret = DfConnectNet(ip);
-	if (ret == DF_FAILED)
-	{
-		return 0;
-	}
-
-	DfEnableSinglePatternProjection();
-
-	DfDisconnectNet();
-
-
-	std::cout << "enable middle line" << std::endl;
-	return 1;
-}
-
-int disable_single_pattern(const char* ip)
-{
-
-	DfRegisterOnDropped(on_dropped);
-
-	int ret = DfConnectNet(ip);
-	if (ret == DF_FAILED)
-	{
-		return 0;
-	}
-
-	DfDisableSinglePatternProjection();
-
-	DfDisconnectNet();
-
-
-	std::cout << "enable middle line" << std::endl;
-	return 1;
-}
-
 
 bool read_hdr_param_from_file(const char* param_path, int& hdr_count, int* exposure_time, int* brightness)
 {

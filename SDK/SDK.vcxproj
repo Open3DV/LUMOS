@@ -160,7 +160,7 @@ copy $(ProjectDir)..\3rdparty\ConfiguringIP\enumerate.lib $(ProjectDir)..\exampl
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\firmware\easylogging++.h" />
-    <ClInclude Include="laser_3d_cam.h" />
+    <ClInclude Include="laser_3d_cam_dev.h" />
     <ClInclude Include="socket_tcp.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
