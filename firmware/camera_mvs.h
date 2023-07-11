@@ -21,6 +21,7 @@ public:
 	bool openCamera(); 
 	bool openCameraLeft(); 
 	bool openCameraRight(); 
+	bool openCameraBySN(std::string sn);
 	bool closeCamera(); 
 
 	bool switchToInternalTriggerMode(); 

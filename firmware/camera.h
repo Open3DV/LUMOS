@@ -13,6 +13,8 @@ public:
 	
 	virtual bool openCameraRight(){return false;};
 
+	virtual bool openCameraBySN(std::string sn){return false;}
+
 	virtual bool closeCamera(); 
 	
 	virtual bool switchToInternalTriggerMode();

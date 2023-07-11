@@ -2,6 +2,7 @@
 #include "easylogging++.h"
 #include "protocol.h"
 #include "management.cuh"
+#include <fstream>
 
  
 Scan3D::Scan3D()
@@ -42,16 +43,38 @@ int Scan3D::init()
     }
 
     //相机初始化
+    std::fstream sn_list;
+    std::string sn_left;
+    std::string sn_right;
+    sn_list.open("./camera_sn.txt", std::ios::in);
+
+    if (sn_list.is_open())
+    {
+        sn_list >> sn_left;
+        sn_list >> sn_right;
+        sn_list.close();
+    }
+    else
+    {
+        sn_list.close();
+        sn_list.open("./camera_sn.txt", std::ios::out);
+        LOG(ERROR) << "please edit the camera_sn.txt!";
+        sn_list << std::string("please edit the camera_sn.txt!");
+        sn_list.close();
+    }
+
+    LOG(INFO) << "camera list: \n" << "sn_left: " << sn_left << '\n' << "sn_right: " << sn_right;
+
     if (camera_opened_flag_ == false)
     {
         LOG(INFO) << "Open MVS Camera:";
         camera_left_ = new CameraMVS();
         camera_right_ = new CameraMVS();
-        if (!camera_left_->openCameraLeft())
+        if (!camera_left_->openCameraBySN(sn_left))
         {
             LOG(INFO) << "Open Left MVS Camera Error!";
             camera_opened_flag_ = false;
-            if (!camera_right_->openCameraRight())
+            if (!camera_right_->openCameraBySN(sn_right))
             {
                 LOG(INFO) << "Open Right MVS Camera Error!";
                 camera_opened_flag_ = false;
@@ -64,7 +87,7 @@ int Scan3D::init()
             delete camera_right_;
             return false;
         }
-        else if (!camera_right_->openCameraRight())
+        else if (!camera_right_->openCameraBySN(sn_right))
         {
             LOG(INFO) << "Open Right MVS Camera Error!";
             camera_opened_flag_ = false;
@@ -79,14 +102,18 @@ int Scan3D::init()
             camera_opened_flag_ = true;
         }
     }
-
+    
     camera_left_->switchToExternalTriggerMode();   
     camera_right_->switchToExternalTriggerMode();
     //camera_->switchToInternalTriggerMode();
     LOG(INFO)<<"switchToExternalTriggerMode!"; 
 
     camera_left_->getImageSize(image_width_,image_height_);
-
+    if (!camera_opened_flag_)
+    {
+        image_width_ = 1624;
+        image_height_ = 1240;
+    }
     int hdr_count;
     int exposure_time[5];
     int brightness[5];
