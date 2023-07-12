@@ -532,6 +532,7 @@ bool Scan3D::captureTextureImage(int model,float exposure,unsigned char* buff)
 
 bool Scan3D::captureRaw01(unsigned char* buff)
 {
+    projector_->setProjectorExposure(camera_exposure_);
     LOG(INFO) << "setPixelFormat(8)";
 
     camera_left_->setPixelFormat(8);
@@ -542,6 +543,8 @@ bool Scan3D::captureRaw01(unsigned char* buff)
         LOG(INFO) << "Stream On Error";
         camera_left_->streamOff();
         camera_right_->streamOff();
+        camera_left_->setPixelFormat(12);
+        camera_right_->setPixelFormat(12);
         return false;
     }
     if (!camera_right_->streamOn())
@@ -549,6 +552,8 @@ bool Scan3D::captureRaw01(unsigned char* buff)
         LOG(INFO) << "Stream On Error";
         camera_left_->streamOff();
         camera_right_->streamOff();
+        camera_left_->setPixelFormat(12);
+        camera_right_->setPixelFormat(12);
         return false;
     }
 
@@ -579,12 +584,16 @@ bool Scan3D::captureRaw01(unsigned char* buff)
         {
             camera_left_->streamOff();
             camera_right_->streamOff();
+            camera_left_->setPixelFormat(12);
+            camera_right_->setPixelFormat(12);
             return false;
         }
         if (!camera_right_->grap(img_ptr_right))
         {
             camera_left_->streamOff();
             camera_right_->streamOff();
+            camera_left_->setPixelFormat(12);
+            camera_right_->setPixelFormat(12);
             return false;
         }
  
@@ -734,6 +743,7 @@ std::vector<cv::Mat> generateGrayCodeTest(std::vector<int> period, int width, in
 
 int Scan3D::captureFrame01()
 {
+    projector_->setProjectorExposure(camera_exposure_);
     LOG(INFO) << "start init basic memory";
     cuda_init_basic_memory();
     LOG(INFO) << "finish init basic memory";
