@@ -226,6 +226,7 @@ bool CameraCaptureGui::initializeFunction()
 	connect(ui.doubleSpinBox_confidence, SIGNAL(valueChanged(double)), this, SLOT(do_doubleSpin_confidence(double)));
 	connect(ui.doubleSpinBox_depth_filter, SIGNAL(valueChanged(double)), this, SLOT(do_doubleSpin_depth_fisher(double)));
 	connect(ui.doubleSpinBox_gain, SIGNAL(valueChanged(double)), this, SLOT(do_doubleSpin_gain(double)));
+	connect(ui.doubleSpinBox_gamma, SIGNAL(valueChanged(double)), this, SLOT(do_doubleSpin_gamma(double)));
 
 	connect(ui.spinBox_led, SIGNAL(valueChanged(int)), this, SLOT(do_spin_led_current_changed(int)));
 	connect(ui.spinBox_camera_exposure, SIGNAL(valueChanged(int)), this, SLOT(do_spin_camera_exposure_changed(int)));
@@ -536,6 +537,7 @@ void CameraCaptureGui::undateSystemConfigUiData()
 
 	ui.doubleSpinBox_confidence->setValue(firmware_config_param_.confidence);
 	ui.doubleSpinBox_gain->setValue(system_config_param_.camera_gain);
+	ui.doubleSpinBox_gamma->setValue(system_config_param_.camera_gamma);
 
 	if (0 == firmware_config_param_.use_bilateral_filter)
 	{
@@ -902,6 +904,58 @@ void CameraCaptureGui::do_doubleSpin_gain(double val)
 			{
 				//ui.spinBox_camera_exposure->setValue(system_config_param_.camera_exposure_time);
 				QString str = u8"设置相机增益: " + QString::number(system_config_param_.camera_gain);
+				addLogMessage(str);
+			}
+
+		}
+
+	}
+
+	camera_setting_flag_ = false;
+}
+
+void CameraCaptureGui::do_doubleSpin_gamma(double val)
+{
+
+	if (camera_setting_flag_)
+	{
+		return;
+	}
+
+
+	//设置参数时加锁
+	camera_setting_flag_ = true;
+	if (connected_flag_)
+	{
+
+		system_config_param_.camera_gamma = val;
+
+		int ret_code = -1;
+		//如果连续采集在用、先暂停
+		if (start_timer_flag_)
+		{
+
+			stopCapturingOneFrameBaseThread();
+
+			ret_code = DfSetParamCameraGamma(system_config_param_.camera_gamma);
+			if (0 == ret_code)
+			{
+				//ui.spinBox_camera_exposure->setValue(system_config_param_.camera_exposure_time);
+				QString str = u8"设置相机Gamma: " + QString::number(system_config_param_.camera_gamma);
+				addLogMessage(str);
+			}
+
+			do_pushButton_capture_continuous();
+
+		}
+		else
+		{
+			ret_code = DfSetParamCameraGamma(system_config_param_.camera_gamma);
+
+			if (0 == ret_code)
+			{
+				//ui.spinBox_camera_exposure->setValue(system_config_param_.camera_exposure_time);
+				QString str = u8"设置相机增益: " + QString::number(system_config_param_.camera_gamma);
 				addLogMessage(str);
 			}
 

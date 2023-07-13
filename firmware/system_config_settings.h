@@ -29,6 +29,8 @@ struct SystemConfigParam
 	float standard_plane_external_param[12];
 	//基准平面
 	float standard_plane[4];
+	//gamma矫正
+	float camera_gamma;
 
 };
 

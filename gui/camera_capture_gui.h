@@ -186,6 +186,8 @@ private slots:
 
 	void do_doubleSpin_gain(double val);
 
+	void do_doubleSpin_gamma(double val);
+
 	void do_doubleSpin_confidence(double val);
 
 	void do_doubleSpin_depth_fisher(double val);

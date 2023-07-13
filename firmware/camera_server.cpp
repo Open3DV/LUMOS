@@ -844,6 +844,7 @@ int handle_cmd_set_param_camera_gamma(int client_sock)
 
     if (scan3d_.setParamCameraGamma(gamma))
     {
+        system_config_settings_machine_.Instance().config_param_.camera_gamma = gamma;
         LOG(INFO) << "Set Camera Gamma: " << gamma;
     }
     else
