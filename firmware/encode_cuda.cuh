@@ -37,7 +37,7 @@ __global__ void kernel_decode_threshold_and_mask(int width, int height, float d_
 
 __global__ void kernel_decode_threshold_and_mask(int width, int height, float d_in_confidence, unsigned char* d_in_darkness, unsigned char* d_in_brightness, unsigned short* d_threshold, unsigned char* d_mask_noise, unsigned char* d_code);
 
-__global__ void kernel_convert_brightness_to_8bit(int width, int height, unsigned short* d_in_brightness_16bit, unsigned char* d_in_brightness, unsigned char* d_code);
+__global__ void kernel_convert_brightness_to_8bit(int width, int height, unsigned short* d_in_brightness_16bit, unsigned char* d_in_brightness, unsigned char* d_code, float gamma);
 
 __global__ void kernel_gray_code_to_bin_code(int width, int height, unsigned char* d_in_out_code, unsigned char* d_gray_code_to_bin_map, unsigned char* d_in_noise_mask, unsigned char* d_in_test);
 

@@ -89,7 +89,7 @@ laser_3d_cam.exe --set-camera-exposure-param --ip 192.168.x.x --exposure 12000\n
 laser_3d_cam.exe --get-camera-exposure-param --ip 192.168.x.x\n\
 \n\
 6.Set Camera Gain: 设置相机增益\n\
-laser_3d_cam.exe --set-camera-gain --ip 192.168.x.x --gain 1023\n\
+laser_3d_cam.exe --set-camera-gain --ip 192.168.x.x --gain 5\n\
 \n\
 7.Get Camera Gain: 获取相机增益\n\
 laser_3d_cam.exe --get-camera-gain --ip 192.168.x.x\n\
@@ -102,6 +102,12 @@ laser_3d_cam.exe --set-hdr-param --ip 192.168.x.x --path ./hdr_params.xml\n\
 \n\
 10.Get Frame 01 HDR: 获取一帧的亮度数据\n\
 laser_3d_cam.exe --get-frame-01-hdr --ip 192.168.x.x --path ./frame_01_hdr\n\
+\n\
+11.Set Camera Gamma: 设置相机Gamma矫正\n\
+laser_3d_cam.exe --set-camera-gamma --ip 192.168.x.x --gamma 0.5\n\
+\n\
+12.Get Camera Gamma: 获取相机Gamma矫正\n\
+laser_3d_cam.exe --get-camera-gamma --ip 192.168.x.x\n\
 \n\
 ";
 
@@ -132,6 +138,8 @@ bool depthToDepthColor(cv::Mat depth_map, cv::Mat& color_map, cv::Mat& grey_map,
 bool maskZMap(cv::Mat& z_map, cv::Mat mask);
 int set_hdr_param(const char* ip, const char* param_path);
 bool read_hdr_param_from_file(const char* param_path, int& hdr_count, int* exposure_time, int* brightness);
+int set_camera_gamma(const char* ip, float gamma);
+int get_camera_gamma(const char* ip, float& gamma);
 
 extern int optind, opterr, optopt;
 extern char* optarg;
@@ -160,6 +168,9 @@ enum opt_set
 	GAIN,
 	LINE_INDEX,
 	SET_HDR_PARAM,
+	SET_CAMERA_GAMMA,
+	GET_CAMERA_GAMMA,
+	GAMMA
 };
 
 static struct option long_options[] =
@@ -171,6 +182,7 @@ static struct option long_options[] =
 	{"offset", required_argument, NULL, OFFSET},
 	{"gain", required_argument, NULL, GAIN},
 	{"line-index", required_argument, NULL, LINE_INDEX},
+	{"gamma", required_argument, NULL, GAMMA},
 	{"get-calib-param",no_argument,NULL,GET_CALIB_PARAM},
 	{"set-calib-param",no_argument,NULL,SET_CALIB_PARAM},
 	{"get-raw-01",no_argument,NULL,GET_RAW_01},
@@ -186,6 +198,8 @@ static struct option long_options[] =
 	{"set-camera-gain",no_argument,NULL,SET_CAMERA_GAIN},
 	{"get-camera-gain",no_argument,NULL,GET_CAMERA_GAIN},
 	{"set-hdr-param",no_argument,NULL,SET_HDR_PARAM},
+	{"set-camera-gamma",no_argument,NULL,SET_CAMERA_GAMMA},
+	{"get-camera-gamma",no_argument,NULL,GET_CAMERA_GAMMA},
 };
 
 const char* camera_id = NULL;
@@ -195,6 +209,7 @@ const char* c_exposure = NULL;
 const char* c_offset = NULL;
 const char* c_gain = NULL;
 const char* c_line_index = NULL;
+const char* c_gamma = NULL;
 
 int command = HELP;
 
@@ -230,6 +245,9 @@ int main(int argc, char* argv[])
 			break;
 		case LINE_INDEX:
 			c_line_index = optarg;
+			break;
+		case GAMMA:
+			c_gamma = optarg;
 			break;
 		case '?':
 			printf("unknow option:%c\n", optopt);
@@ -309,6 +327,18 @@ int main(int argc, char* argv[])
 	case SET_HDR_PARAM:
 	{
 		set_hdr_param(camera_id, path);
+	}
+	break;
+	case SET_CAMERA_GAMMA:
+	{
+		float gamma = std::atof(c_gamma);
+		set_camera_gamma(camera_id, gamma);
+	}
+	break;
+	case GET_CAMERA_GAMMA:
+	{
+		float gamma = 0;
+		get_camera_gamma(camera_id, gamma);
 	}
 	break;
 	default:
@@ -1474,5 +1504,53 @@ bool read_hdr_param_from_file(const char* param_path, int& hdr_count, int* expos
 	fs_in["hdr_brightness_list"] >> brightness_list;
 	
 	return true;
+}
+
+int set_camera_gamma(const char* ip, float gamma)
+{
+	if (gamma < 0.1 || gamma > 2)
+	{
+		std::cout << "gain out of range!" << std::endl;
+		return 0;
+	}
+
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnectNet(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+
+	DfSetParamCameraGamma(gamma);
+
+
+	DfDisconnectNet();
+
+
+	std::cout << "camera gamma: " << gamma << std::endl;
+
+	return 1;
+}
+
+int get_camera_gamma(const char* ip, float& gamma)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnectNet(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+
+	DfGetParamCameraGamma(gamma);
+
+
+	DfDisconnectNet();
+
+
+	std::cout << "camera gamma: " << gamma << std::endl;
 }
 

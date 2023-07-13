@@ -210,7 +210,7 @@ __global__ void kernel_decode_threshold_and_mask(int width, int height, float d_
 	}
 }
 
-__global__ void kernel_convert_brightness_to_8bit(int width, int height, unsigned short* d_in_brightness_16bit, unsigned char* d_in_brightness, unsigned char* d_code)
+__global__ void kernel_convert_brightness_to_8bit(int width, int height, unsigned short* d_in_brightness_16bit, unsigned char* d_in_brightness, unsigned char* d_code, float gamma)
 {
 	const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	const unsigned int idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -219,11 +219,18 @@ __global__ void kernel_convert_brightness_to_8bit(int width, int height, unsigne
 	if (idx < width && idy < height)
 	{
 		d_code[offset] = 0;
-		float Gamma = 0.5;
-		float coefficient = 255. / pow(4095., Gamma);
 
-		d_in_brightness[offset] = coefficient * pow((float)(d_in_brightness_16bit[offset]), Gamma) + 1;
-		// d_in_brightness[offset] = (d_in_brightness_16bit[offset] >> 4);
+		// gamma = 1;
+
+		if (d_in_brightness_16bit[offset] > 4080) 
+		{
+			d_in_brightness[offset] = 255;
+			return;
+		}
+
+		float coefficient = 255. / pow(4095., gamma);
+
+		d_in_brightness[offset] = coefficient * pow((float)(d_in_brightness_16bit[offset]), gamma);
 	}
 }
 

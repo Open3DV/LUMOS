@@ -299,6 +299,8 @@ int Scan3D::init()
     writeCalibParamUser();
 
     cuda_copy_Q_map_to_memory((float*)Q.data);
+
+    setParamCameraGamma(0.5);
     
     LOG(INFO) << "init GPU end";
 
@@ -406,6 +408,28 @@ bool Scan3D::getParamGain(float& gain)
     camera_gain_ = gain;
 
     return true;
+}
+
+bool Scan3D::setParamCameraGamma(float gamma)
+{
+
+    if (cuda_set_camera_gamma(gamma))
+    {
+        camera_gamma_ = gamma;
+        return true;
+    }
+    return false;
+    
+}
+
+bool Scan3D::getParamCameraGamma(float& gamma)
+{
+    if (cuda_get_camera_gamma(gamma))
+    {
+        camera_gamma_ = gamma;
+        return true;
+    }
+    return false;
 }
 
 bool Scan3D::setParamGenerateBrightness(int model, int exposure)

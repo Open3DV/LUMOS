@@ -87,6 +87,10 @@ public:
 
     int getParamMaxCameraExposure();
 
+    bool setParamCameraGamma(float gamma);
+
+    bool getParamCameraGamma(float& gamma);
+
     int generate_brightness_model_;
     int generate_brightness_exposure_;
 
@@ -118,6 +122,7 @@ private:
 
     int camera_exposure_;
     float camera_gain_;
+    float camera_gamma_;
 
     int image_width_;
     int image_height_;

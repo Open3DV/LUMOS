@@ -720,7 +720,6 @@ int handle_set_system_config_parameters(int client_sock)
 
 /**********************************************************************************************************************/
 
-//��ȡ����������
 int handle_cmd_get_param_camera_gain(int client_sock)
 {
     if (check_token(client_sock) == DF_FAILED)
@@ -743,7 +742,6 @@ int handle_cmd_get_param_camera_gain(int client_sock)
 
 }
 
-//��ȡ����ع����
 int handle_cmd_get_param_camera_exposure(int client_sock)
 {
     if (check_token(client_sock) == DF_FAILED)
@@ -817,6 +815,64 @@ int handle_cmd_set_param_camera_gain(int client_sock)
     }
 
 
+
+    return DF_SUCCESS;
+}
+
+int handle_cmd_set_param_camera_gamma(int client_sock)
+{
+    if (check_token(client_sock) == DF_FAILED)
+    {
+        return DF_FAILED;
+    }
+
+
+    float gamma = 0;
+
+    int ret = recv_buffer(client_sock, (char*)(&gamma), sizeof(float));
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!\n";
+        return DF_FAILED;
+    }
+
+    if (gamma < 0.1 || gamma > 2)
+    {
+        gamma = 1;
+    }
+
+
+    if (scan3d_.setParamCameraGamma(gamma))
+    {
+        LOG(INFO) << "Set Camera Gamma: " << gamma;
+    }
+    else
+    {
+        LOG(INFO) << "Set Camera Gamma Error!";
+    }
+
+
+
+    return DF_SUCCESS;
+}
+
+int handle_cmd_get_param_camera_gamma(int client_sock)
+{
+    if (check_token(client_sock) == DF_FAILED)
+    {
+        return DF_FAILED;
+    }
+
+    float send_gamma;
+    scan3d_.getParamCameraGamma(send_gamma);
+
+    int ret = send_buffer(client_sock, (char*)(&send_gamma), sizeof(float));
+
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!\n";
+        return DF_FAILED;
+    }
 
     return DF_SUCCESS;
 }
@@ -1776,6 +1832,14 @@ int handle_commands(int client_sock)
     case DF_CMD_GET_PARAM_CAMERA_GAIN:
         LOG(INFO) << "DF_CMD_GET_PARAM_CAMERA_GAIN";
         ret = handle_cmd_get_param_camera_gain(client_sock);
+        break;
+    case DF_CMD_SET_PARAM_CAMERA_GAMMA:
+        LOG(INFO) << "DF_CMD_SET_PARAM_CAMERA_GAMMA";
+        ret = handle_cmd_set_param_camera_gamma(client_sock);
+        break;
+    case DF_CMD_GET_PARAM_CAMERA_GAMMA:
+        LOG(INFO) << "DF_CMD_GET_PARAM_CAMERA_GAMMA";
+        ret = handle_cmd_get_param_camera_gamma(client_sock);
         break;
     case DF_CMD_GET_CAMERA_RESOLUTION:
         LOG(INFO) << "DF_CMD_GET_CAMERA_RESOLUTION";

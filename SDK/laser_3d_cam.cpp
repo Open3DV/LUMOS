@@ -1360,11 +1360,6 @@ DF_SDK_API int DfRegisterOnDropped(int (*p_function)(void*))
 	return 0;
 }
 
-//函数名： DfSetParamCameraGain
-//功能： 设置相机增益
-//输入参数：gain(相机增益)
-//输出参数： 无
-//返回值： 类型（int）:返回0表示获取数据成功;返回-1表示采集数据失败.
 DF_SDK_API int DfSetParamCameraGain(float gain)
 {
 	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
@@ -1417,11 +1412,6 @@ DF_SDK_API int DfSetParamCameraGain(float gain)
 	return DF_SUCCESS;
 }
 
-//函数名： DfGetParamCameraGain
-//功能： 获取相机增益
-//输入参数： 无
-//输出参数：gain(相机增益)
-//返回值： 类型（int）:返回0表示获取数据成功;返回-1表示采集数据失败.
 DF_SDK_API int DfGetParamCameraGain(float& gain)
 {
 	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
@@ -1472,11 +1462,108 @@ DF_SDK_API int DfGetParamCameraGain(float& gain)
 	return DF_SUCCESS;
 }
 
-//函数名： DfSetParamHDR
-//功能： 设置HDR曝光参数
-//输入参数： 曝光组数，曝光时间，亮度
-//输出参数：无
-//返回值： 类型（int）:返回0表示获取参数成功;否则失败。
+DF_SDK_API int DfSetParamCameraGamma(float gamma)
+{
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+
+	LOG(INFO) << "DfSetParamCameraGamma:";
+
+	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+	if (ret == DF_FAILED)
+	{
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+	ret = send_command(DF_CMD_SET_PARAM_CAMERA_GAMMA, g_sock);
+	ret = send_buffer((char*)&token, sizeof(token), g_sock);
+	int command;
+	ret = recv_command(&command, g_sock);
+	if (ret == DF_FAILED)
+	{
+		LOG(ERROR) << "Failed to recv command";
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+	if (command == DF_CMD_OK)
+	{
+
+		ret = send_buffer((char*)(&gamma), sizeof(float), g_sock);
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+	}
+	else if (command == DF_CMD_REJECT)
+	{
+		close_socket(g_sock);
+		return DF_BUSY;
+	}
+	else if (command == DF_CMD_UNKNOWN)
+	{
+		close_socket(g_sock);
+		return DF_UNKNOWN;
+	}
+
+	close_socket(g_sock);
+	return DF_SUCCESS;
+}
+
+DF_SDK_API int DfGetParamCameraGamma(float& gamma)
+{
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+	LOG(INFO) << "DfGetParamCameraGamma:";
+	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+	if (ret == DF_FAILED)
+	{
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+	ret = send_command(DF_CMD_GET_PARAM_CAMERA_GAMMA, g_sock);
+	ret = send_buffer((char*)&token, sizeof(token), g_sock);
+	int command;
+	ret = recv_command(&command, g_sock);
+	if (ret == DF_FAILED)
+	{
+		LOG(ERROR) << "Failed to recv command";
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+	if (command == DF_CMD_OK)
+	{
+
+		ret = recv_buffer((char*)(&gamma), sizeof(float), g_sock);
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+	}
+	else if (command == DF_CMD_REJECT)
+	{
+		close_socket(g_sock);
+		return DF_BUSY;
+	}
+	else if (command == DF_CMD_UNKNOWN)
+	{
+		close_socket(g_sock);
+		return DF_UNKNOWN;
+	}
+
+	close_socket(g_sock);
+	return DF_SUCCESS;
+}
+
 DF_SDK_API int DfSetParamHDR(int hdr_count, int* exposure_list, int* brightness_list)
 {
 	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);

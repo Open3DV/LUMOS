@@ -27,6 +27,7 @@ __device__ int d_image_height_ = 0;
 __device__ float d_confidence_ = 100;
 __device__ float d_confidence_t = 100;
 
+__device__ float d_camera_gamma_ = 1;
 
 /**********************************************************************/
 //basic memory
@@ -198,6 +199,10 @@ void cuda_fix_four_step_code_shift(int serial_flag);
 bool cuda_copy_result_to_hdr(int serial_flag,int brigntness_serial);
 
 bool cuda_merge_hdr_data(int hdr_num,float* depth_map, unsigned char* brightness);
+
+bool cuda_set_camera_gamma(float gamma);
+
+bool cuda_get_camera_gamma(float& gamma);
 
 //bool 
 

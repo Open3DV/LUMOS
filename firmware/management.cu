@@ -577,8 +577,9 @@ bool cuda_decode_gray_code_one_by_one_16bit(int serial_flag, cudaStream_t stream
 	{
 		// kernel_decode_threshold_and_mask << <blocksPerGrid, threadsPerBlock, 0, stream_left >> > (d_image_width_, d_image_height_, d_confidence_, d_patterns_list_[0][4], d_patterns_list_[0][5], d_threshold_map_16bit_[0], d_noise_mask_map_[0], d_code_map_[0]);
 		// kernel_decode_threshold_and_mask << <blocksPerGrid, threadsPerBlock, 0, stream_right >> > (d_image_width_, d_image_height_, d_confidence_, d_patterns_list_[1][4], d_patterns_list_[1][5], d_threshold_map_16bit_[1], d_noise_mask_map_[1], d_code_map_[1]);
-		kernel_convert_brightness_to_8bit << <blocksPerGrid, threadsPerBlock, 0, stream_left >> > (d_image_width_, d_image_height_, d_patterns_list_16bit_[0][4], d_patterns_list_[0][5], d_code_map_[0]);
-		kernel_convert_brightness_to_8bit << <blocksPerGrid, threadsPerBlock, 0, stream_right >> > (d_image_width_, d_image_height_, d_patterns_list_16bit_[1][4], d_patterns_list_[1][5], d_code_map_[1]);
+		LOG(INFO) << "d_camera_gamma_: " << d_camera_gamma_;
+		kernel_convert_brightness_to_8bit << <blocksPerGrid, threadsPerBlock, 0, stream_left >> > (d_image_width_, d_image_height_, d_patterns_list_16bit_[0][4], d_patterns_list_[0][5], d_code_map_[0], d_camera_gamma_);
+		kernel_convert_brightness_to_8bit << <blocksPerGrid, threadsPerBlock, 0, stream_right >> > (d_image_width_, d_image_height_, d_patterns_list_16bit_[1][4], d_patterns_list_[1][5], d_code_map_[1], d_camera_gamma_);
 
 
 	}
@@ -1043,3 +1044,28 @@ bool cuda_merge_hdr_data(int hdr_num,float* depth_map, unsigned char* brightness
 	return true;
 }
 
+bool cuda_set_camera_gamma(float gamma)
+{
+	d_camera_gamma_ = gamma;
+	cudaError_t error_code = cudaMemcpyToSymbol(d_camera_gamma_, &gamma, sizeof(float));
+	if (error_code != cudaSuccess)
+	{
+		LOG(ERROR) << "cudaMemcpyToSymbol Failed! ";
+		return false;
+	}
+	LOG(INFO) << "d_camera_gamma_: " << d_camera_gamma_;
+	return true;
+}
+
+bool cuda_get_camera_gamma(float& gamma)
+{
+	gamma = d_camera_gamma_;
+	cudaError_t error_code = cudaMemcpyFromSymbol(&gamma, d_camera_gamma_, sizeof(float));
+	if (error_code != cudaSuccess)
+	{
+		LOG(ERROR) << "cudaMemcpyFromSymbol Failed! ";
+		return false;
+	}
+	LOG(INFO) << "d_camera_gamma_: " << d_camera_gamma_;
+	return true;
+}
