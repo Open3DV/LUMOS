@@ -2856,15 +2856,30 @@ void  CameraCaptureGui::do_timeout_capture_slot()
 		//{
 		//	capture_timer_.start();
 		//}
-
-		if (!capturing_flag_)
+		if (radio_button_flag_ == 4)
 		{
-			addLogMessage(u8"采集数据：");
+			if (!capturing_flag_)
+			{
+				addLogMessage(u8"采集Raw数据：");
+			}
+			std::thread t_s(&CameraCaptureGui::captureOneRawFrameBaseThread, this);
+			t_s.detach();
+			capture_timer_.start();
+
+
+		}
+		else
+		{
+			if (!capturing_flag_)
+			{
+				addLogMessage(u8"采集数据：");
+			}
+
+			std::thread t_s(&CameraCaptureGui::captureOneFrameBaseThread, this, false);
+			t_s.detach();
+			capture_timer_.start();
 		}
 
-		std::thread t_s(&CameraCaptureGui::captureOneFrameBaseThread, this, false);
-		t_s.detach();
-		capture_timer_.start();
 	}
 	else
 	{
@@ -2878,7 +2893,6 @@ void  CameraCaptureGui::do_timeout_capture_slot()
 
 void  CameraCaptureGui::do_pushButton_capture_continuous()
 {
-
 	if (start_timer_flag_)
 	{
 		start_timer_flag_ = false;
@@ -2904,11 +2918,12 @@ void  CameraCaptureGui::do_pushButton_capture_continuous()
 			ui.pushButton_test_accuracy->setDisabled(true);
 		}
 		else
-		{ 
+		{
 			addLogMessage(u8"请先连接相机");
 		}
 
 	}
+
 
 	//capture_thread_ = new QThread(this);
 	//capture_thread_->start();

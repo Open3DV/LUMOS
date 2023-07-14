@@ -324,7 +324,7 @@ bool SettingsFileFunction::saveProcessingSettingsFile(QString path)
 {
 
 	QFile file(path);
-	if (!file.open(QIODevice::ReadWrite)) {
+	if (!file.open(QIODevice::WriteOnly)) {
 		qDebug() << "File open error";
 	}
 	else {
