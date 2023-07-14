@@ -250,6 +250,16 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_6">
           <item>
+           <widget class="QRadioButton" name="radioButton_calibration">
+            <property name="text">
+             <string>原始图</string>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QRadioButton" name="radioButton_brightness">
             <property name="text">
              <string>亮度图</string>

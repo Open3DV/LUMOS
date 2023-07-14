@@ -235,6 +235,7 @@ bool CameraCaptureGui::initializeFunction()
 	connect(ui.radioButton_brightness, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_brightness(bool)));
 	connect(ui.radioButton_depth_color, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_color_depth(bool)));
 	connect(ui.radioButton_depth_grey, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_gray_depth(bool)));
+	connect(ui.radioButton_calibration, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_calibration(bool)));
 	 
 	connect(ui.comboBox_ip, SIGNAL(activated(int)), this, SLOT(do_comboBox_activated_ip(int))); 
 	connect(ui.checkBox_over_exposure, SIGNAL(toggled(bool)), this, SLOT(do_checkBox_toggled_over_exposure(bool)));
@@ -1642,6 +1643,100 @@ void CameraCaptureGui::captureOneFrameBaseThread(bool hdr)
 	capturing_flag_ = false;
 }
 
+void CameraCaptureGui::captureOneRawFrameBaseThread()
+{
+
+	if (!connected_flag_)
+	{
+		return;
+	}
+
+
+	if (capturing_flag_)
+	{
+		return;
+	}
+	capturing_flag_ = true;
+
+	//addLogMessage(u8"采集数据：");
+
+	int width = camera_width_;
+	int height = camera_height_;
+
+	int image_size = width * height;
+
+	unsigned char* raw_images_buffer = new unsigned char[(long long)image_size * 28];
+
+	int ret_code = -1;
+ 
+	ret_code = DfGetCameraRawData01(raw_images_buffer, (long long)image_size * 28);
+
+	if (DF_SUCCESS != ret_code)
+	{
+		addLogMessage(u8"采集数据异常： " + QString::number(ret_code));
+		ret_code = 0;
+	}
+
+
+	/***************************************************************************/
+	if (0 == ret_code)
+	{
+		// 从里面获得正确的图像
+		cv::Mat image_left(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 13));
+		cv::Mat image_right(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 27));
+
+		cv::Mat image_left_bright(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 12));
+		cv::Mat image_right_bright(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 26));
+
+		//image_left_bright.convertTo(image_left_bright, CV_8UC3);
+		//image_right_bright.convertTo(image_right_bright, CV_8UC3);
+		cv::cvtColor(image_left_bright, image_left_bright, cv::COLOR_GRAY2BGR);
+		cv::cvtColor(image_right_bright, image_right_bright, cv::COLOR_GRAY2BGR);
+
+		Calibrate_Function calib_function;
+		calib_function.setBoardMessage(board_message_);
+
+		std::vector<cv::Point2f> circle_points[2];
+		bool found_l = calib_function.findCircleBoardFeature(image_left, circle_points[0]);
+		bool found_r = calib_function.findCircleBoardFeature(image_right, circle_points[1]);
+
+		cv::Mat color_img_l;
+		cv::Mat color_img_r;
+		cv::Size board_size = calib_function.getBoardSize();
+		cv::cvtColor(image_left, color_img_l, cv::COLOR_GRAY2BGR);
+		cv::cvtColor(image_right, color_img_r, cv::COLOR_GRAY2BGR);
+		cv::drawChessboardCorners(color_img_l, board_size, circle_points[0], found_l);
+		cv::drawChessboardCorners(color_img_r, board_size, circle_points[1], found_r);
+
+		cv::Mat dark_temp;
+		cv::Mat bright_temp;
+		cv::hconcat(color_img_l, color_img_r, dark_temp);
+		cv::hconcat(image_left_bright, image_right_bright, bright_temp);
+		cv::vconcat(dark_temp, bright_temp, render_image_raw_);
+
+		float temperature = 0;
+		ret_code = DfGetDeviceTemperature(temperature);
+		std::cout << "temperature: " << temperature << std::endl;
+		emit send_temperature_update(temperature);
+
+		capture_show_flag_ = true;
+
+		addLogMessage(u8"采集Raw完成！");
+		emit send_images_update();
+
+
+	}
+	else
+	{
+		start_timer_flag_ = false;
+		addLogMessage(u8"采集Raw失败！");
+	}
+
+	delete[] raw_images_buffer;
+
+	capturing_flag_ = false;
+}
+
 bool CameraCaptureGui::captureOneFrameData()
 {
 
@@ -2674,6 +2769,16 @@ bool CameraCaptureGui::captureOneFrameAndRender()
 	return true;
 }
 
+bool CameraCaptureGui::captureOneRawFrameAndRender()
+{
+
+	addLogMessage(u8"采集Raw数据：");
+	std::thread t_s(&CameraCaptureGui::captureOneRawFrameBaseThread, this);
+	t_s.detach();
+
+	return true;
+}
+
 
 void  CameraCaptureGui::do_pushButton_capture_one_frame()
 {
@@ -2685,13 +2790,16 @@ void  CameraCaptureGui::do_pushButton_capture_one_frame()
 	//	return;
 	//}
 	 
+	switch (radio_button_flag_)
+	{
+	case 4:
+		captureOneRawFrameAndRender();
+		break;
 
-	captureOneFrameAndRender();
-
-
-
-
-
+	default:
+		captureOneFrameAndRender();
+		break;
+	}
 }
 
 
@@ -2932,6 +3040,15 @@ void CameraCaptureGui::do_QRadioButton_toggled_gray_depth(bool state)
 	}
 }
 
+void CameraCaptureGui::do_QRadioButton_toggled_calibration(bool state)
+{
+	if (state)
+	{
+		radio_button_flag_ = SELECT_CALIBRATE_RAW_FLAG_;
+		//qDebug() << "state: " << radio_button_flag_;
+		showImage();
+	}
+}
 
 void CameraCaptureGui::do_QRadioButton_toggled_generate_brightness_default(bool state)
 {
@@ -2989,6 +3106,12 @@ bool CameraCaptureGui::showImage()
 	}
 	break;
 
+	case 4:
+	{
+		setImage(render_image_raw_);
+	}
+	break;
+
 	default:
 		break;
 	}
@@ -3035,12 +3158,12 @@ bool CameraCaptureGui::setImage(cv::Mat img)
 
 
 
-	//pixmap_ = QPixmap::fromImage(qimg);
+	QPixmap pixmap_ = QPixmap::fromImage(qimg);
 
 
 	ui.label_image->setPixmap(QPixmap::fromImage(qimg));
-	ui.label_image->setScaledContents(true);
-	//ui.label_image->setPixmap(pixmap_.scaled(ui.label_image->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));  // 保持比例 & 平滑缩放(无锯齿)
+	ui.label_image->setPixmap(pixmap_.scaled(ui.label_image->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));  // 保持比例 & 平滑缩放(无锯齿)
+	//ui.label_image->setScaledContents(true);
 
 	return true;
 }
