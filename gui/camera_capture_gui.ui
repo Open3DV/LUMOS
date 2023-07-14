@@ -250,16 +250,6 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_6">
           <item>
-           <widget class="QRadioButton" name="radioButton_calibration">
-            <property name="text">
-             <string>原始图</string>
-            </property>
-            <property name="checked">
-             <bool>false</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
            <widget class="QRadioButton" name="radioButton_brightness">
             <property name="text">
              <string>亮度图</string>
@@ -286,6 +276,19 @@
            <widget class="QRadioButton" name="radioButton_depth_grey">
             <property name="text">
              <string>高度图</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">buttonGroup_image</string>
+            </attribute>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioButton_calibration">
+            <property name="text">
+             <string>原始图</string>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">buttonGroup_image</string>
