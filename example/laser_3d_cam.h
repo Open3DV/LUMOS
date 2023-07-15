@@ -85,6 +85,20 @@ extern "C"
 	//返回值： 类型（int）:返回0表示获取参数成功;否则失败。
 	DF_SDK_API int DfGetParamCameraGain(float& gain);
 
+	//函数名： DfSetParamCameraGamma
+	//功能： 设置相机Gamma矫正
+	//输入参数：gamma(Gamma参数)
+	//输出参数： 无
+	//返回值： 类型（int）:返回0表示设置参数成功;否则失败。
+	DF_SDK_API int DfSetParamCameraGamma(float gamma);
+
+	//函数名： DfSetParamCameraGamma
+	//功能： 获取相机Gamma矫正
+	//输入参数：无
+	//输出参数：gamma(Gamma参数)
+	//返回值： 类型（int）:返回0表示获取参数成功;否则失败。
+	DF_SDK_API int DfGetParamCameraGamma(float& gamma);
+
 	//函数名： DfGetParamSmoothing
 	//功能： 获取点云平滑参数
 	//输入参数：无

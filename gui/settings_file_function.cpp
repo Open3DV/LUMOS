@@ -118,7 +118,13 @@ bool SettingsFileFunction::loadProcessingSettingsFile(QString path)
 		if (firmware_Obj.contains("camera_gain") && firmware_Obj["camera_gain"].isDouble())
 		{
 			qDebug() << "camera_gain is:" << firmware_Obj.value("camera_gain").toInt();
-			camera_config_.Instance().config_param_.camera_gain = firmware_Obj.value("camera_gain").toInt();
+			camera_config_.Instance().config_param_.camera_gain = firmware_Obj.value("camera_gain").toDouble();
+		}
+
+		if (firmware_Obj.contains("camera_gamma") && firmware_Obj["camera_gamma"].isDouble())
+		{
+			qDebug() << "camera_gamma is:" << firmware_Obj.value("camera_gamma").toInt();
+			camera_config_.Instance().config_param_.camera_gamma = firmware_Obj.value("camera_gamma").toDouble();
 		}
 
 		if (firmware_Obj.contains("mixed_exposure_num") && firmware_Obj["mixed_exposure_num"].isDouble())
@@ -217,7 +223,7 @@ bool SettingsFileFunction::loadProcessingSettingsFile(QString path)
 			camera_config_.Instance().firwmare_param_.radius_filter_r = firmware_Obj.value("radius_filter_r").toDouble();
 		}
 
-		if (firmware_Obj.contains("radius_filter_threshold_num") && firmware_Obj["radius_filter_threshold_num"].toInt())
+		if (firmware_Obj.contains("radius_filter_threshold_num") && firmware_Obj["radius_filter_threshold_num"].isDouble())
 		{
 			qDebug() << "radius_filter_threshold_num is:" << firmware_Obj.value("radius_filter_threshold_num").toInt();
 			camera_config_.Instance().firwmare_param_.radius_filter_threshold_num = firmware_Obj.value("radius_filter_threshold_num").toInt();
@@ -367,6 +373,7 @@ bool SettingsFileFunction::saveProcessingSettingsFile(QString path)
 
 	jsonObject_firmware.insert("camera_exposure_time", camera_config_.Instance().config_param_.camera_exposure_time);
 	jsonObject_firmware.insert("camera_gain", camera_config_.Instance().config_param_.camera_gain);
+	jsonObject_firmware.insert("camera_gamma", camera_config_.Instance().config_param_.camera_gamma);
 
 
 	jsonObject_firmware.insert("generate_brightness_model", camera_config_.Instance().firwmare_param_.generate_brightness_model);

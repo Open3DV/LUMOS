@@ -23,6 +23,8 @@ class AinstecProjector: public BaseProjector
 
     bool setProjectorExposure(int exposure);
 
+    bool getProjectorExposure(int& exposure);
+
     bool setProjectorTriggerDlay(int dlay);
 
     bool setProjectorWorkingMode(int mode);

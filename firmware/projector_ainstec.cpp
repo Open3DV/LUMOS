@@ -112,6 +112,40 @@ bool AinstecProjector::setProjectorExposure(int exposure)
 
 }
 
+bool AinstecProjector::getProjectorExposure(int& exposure)
+{
+    // 要用无符号整型表示，并且单位转换成0.1ms
+
+    if (exposure > 100000)
+    {
+        std::cerr << "Exposure out of range! " << std::endl;
+        return false;
+    }
+    else if (exposure < 15000)
+    {
+        exposure = 15000;
+    }
+
+    unsigned short exposure_100us = exposure / 100;
+
+    std::cout << "Set projector exposure: " << exposure_100us << " * 100us" << std::endl;
+
+    char send_buff[] = { 0x5a, 0xe3, 0x01, 0x00, 0x00, 0xa5 };
+
+    send_buff[3] = exposure_100us >> 8;
+    send_buff[4] = (exposure_100us << 8) >> 8;
+
+    int len = -1;
+    len = serial_write(serialHandle_, send_buff, sizeof(send_buff));
+    if (len == -1)
+    {
+        return false;
+    }
+
+    return true;
+
+}
+
 bool AinstecProjector::setProjectorTriggerDlay(int dlay)
 {
     return true;

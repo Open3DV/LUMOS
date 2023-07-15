@@ -17,8 +17,9 @@ SystemConfigDataStruct::SystemConfigDataStruct()
 	}
 
 
-	instance_.config_param_.camera_exposure_time = 12000;
+	instance_.config_param_.camera_exposure_time = 15000;
 	instance_.config_param_.camera_gain = 0;
+	instance_.config_param_.camera_gamma = 0.6;
 	instance_.config_param_.external_param_flag = 0;
 
 	instance_.config_param_.standard_plane_external_param[0] = 1;
@@ -42,38 +43,34 @@ SystemConfigDataStruct::SystemConfigDataStruct()
 	instance_.config_param_.standard_plane[2] = 1;
 	instance_.config_param_.standard_plane[3] = 0;
 
-	instance_.config_param_.camera_exposure_time = 12000;
-	instance_.config_param_.camera_gain = 0;
-
-
 	instance_.firwmare_param_.generate_brightness_exposure = 12000;
 	instance_.firwmare_param_.generate_brightness_model = 1;
 	instance_.firwmare_param_.mixed_exposure_num = 2;
 	instance_.firwmare_param_.hdr_model = 1;
 
-	instance_.firwmare_param_.mixed_led_param_list[0] = 0;
-	instance_.firwmare_param_.mixed_led_param_list[1] = 128;
-	instance_.firwmare_param_.mixed_led_param_list[2] = 256;
-	instance_.firwmare_param_.mixed_led_param_list[3] = 512;
+	instance_.firwmare_param_.mixed_led_param_list[0] = 1023;
+	instance_.firwmare_param_.mixed_led_param_list[1] = 1023;
+	instance_.firwmare_param_.mixed_led_param_list[2] = 1023;
+	instance_.firwmare_param_.mixed_led_param_list[3] = 1023;
 	instance_.firwmare_param_.mixed_led_param_list[4] = 1023;
 	instance_.firwmare_param_.mixed_led_param_list[5] = 1023;
 
-	instance_.firwmare_param_.mixed_exposure_param_list[0] = 12000;
+	instance_.firwmare_param_.mixed_exposure_param_list[0] = 6000;
 	instance_.firwmare_param_.mixed_exposure_param_list[1] = 12000;
-	instance_.firwmare_param_.mixed_exposure_param_list[2] = 12000;
-	instance_.firwmare_param_.mixed_exposure_param_list[3] = 12000;
-	instance_.firwmare_param_.mixed_exposure_param_list[4] = 12000;
-	instance_.firwmare_param_.mixed_exposure_param_list[5] = 12000;
+	instance_.firwmare_param_.mixed_exposure_param_list[2] = 24000;
+	instance_.firwmare_param_.mixed_exposure_param_list[3] = 48000;
+	instance_.firwmare_param_.mixed_exposure_param_list[4] = 70000;
+	instance_.firwmare_param_.mixed_exposure_param_list[5] = 100000;
 
 	instance_.firwmare_param_.use_bilateral_filter = 1;
 	instance_.firwmare_param_.bilateral_filter_param_d = 3;
 
-	instance_.firwmare_param_.confidence = 4;
+	instance_.firwmare_param_.confidence = 8;
 
 	instance_.firwmare_param_.use_radius_filter = 1; 
-	instance_.firwmare_param_.radius_filter_r = 20; 
-	instance_.firwmare_param_.radius_filter_threshold_num = 6; 
-	instance_.firwmare_param_.use_depth_filter = 0; 
+	instance_.firwmare_param_.radius_filter_r = 9; 
+	instance_.firwmare_param_.radius_filter_threshold_num = 24; 
+	instance_.firwmare_param_.use_depth_filter = 1; 
 	instance_.firwmare_param_.depth_filter_threshold = 33; 
 	instance_.firwmare_param_.use_reflect_filter = 0;
 	instance_.firwmare_param_.fisher_confidence = -30;

@@ -1180,6 +1180,18 @@ bool CameraCaptureGui::setCameraConfigParam()
 		addLogMessage(u8"设置相机增益失败！");
 	}
 
+	ret_code = DfSetParamCameraGamma(system_config_param_.camera_gamma);
+	if (0 != ret_code)
+	{
+		addLogMessage(u8"设置相机伽马矫正失败！");
+	}
+
+	ret_code = DfSetParamRadiusFilter(firmware_config_param_.use_radius_filter, firmware_config_param_.radius_filter_r, firmware_config_param_.radius_filter_threshold_num);
+	if (0 != ret_code)
+	{
+		addLogMessage(u8"设置半径滤波参数失败！");
+	}
+
 	ret_code = DfSetParamDepthFilter(firmware_config_param_.use_depth_filter, firmware_config_param_.depth_filter_threshold);
 	if (0 != ret_code)
 	{
