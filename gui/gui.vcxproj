@@ -15,6 +15,7 @@
     <Keyword>QtVS_v304</Keyword>
     <QtMsBuild Condition="'$(QtMsBuild)'=='' OR !Exists('$(QtMsBuild)\qt.targets')">$(MSBuildProjectDirectory)\QtMsBuild</QtMsBuild>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>lumos_gui</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'" Label="Configuration">
@@ -58,13 +59,13 @@
     <IncludePath>$(ProjectDir)../3rdparty/ConfiguringIP;$(ProjectDir)../3rdparty/opencv420/include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <IncludePath>$(ProjectDir)../3rdparty/ConfiguringIP;$(ProjectDir)../3rdparty/opencv420/include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(ProjectDir)../3rdparty/ConfiguringIP;$(ProjectDir)../3rdparty/opencv420/lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)../3rdparty/ConfiguringIP/enumerate;$(ProjectDir)../3rdparty/opencv420/include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)..\3rdparty\opencv420\lib\;$(LibraryPath)</LibraryPath>
     <TargetName>laser_3d_cam_gui</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
-      <AdditionalDependencies>$(TargetDir)laser_3d_cam_sdk.lib;enumerate.lib;opencv_calib3d420.lib;opencv_core420.lib;opencv_dnn420.lib;opencv_features2d420.lib;opencv_flann420.lib;opencv_gapi420.lib;opencv_highgui420.lib;opencv_imgcodecs420.lib;opencv_imgproc420.lib;opencv_ml420.lib;opencv_objdetect420.lib;opencv_photo420.lib;opencv_stitching420.lib;opencv_ts420.lib;opencv_video420.lib;opencv_videoio420.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(TargetDir)laser_3d_cam_sdk.lib;$(TargetDir)enumerate.lib;opencv_calib3d420.lib;opencv_core420.lib;opencv_dnn420.lib;opencv_features2d420.lib;opencv_flann420.lib;opencv_gapi420.lib;opencv_highgui420.lib;opencv_imgcodecs420.lib;opencv_imgproc420.lib;opencv_ml420.lib;opencv_objdetect420.lib;opencv_photo420.lib;opencv_stitching420.lib;opencv_ts420.lib;opencv_video420.lib;opencv_videoio420.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>mkdir $(TargetDir)imageformats
@@ -88,8 +89,7 @@ copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_imgcodecs420.dll $(TargetDir)
 copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_imgproc420.dll $(TargetDir)
 copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_calib3d420.dll $(TargetDir)
 copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_features2d420.dll $(TargetDir)
-copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_flann420.dll $(TargetDir)
-copy $(ProjectDir)..\3rdparty\ConfiguringIP\enumerate.dll $(TargetDir)</Command>
+copy $(ProjectDir)..\3rdparty\opencv420\bin\opencv_flann420.dll $(TargetDir)</Command>
     </PostBuildEvent>
     <ClCompile />
     <ClCompile>

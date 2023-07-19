@@ -11,7 +11,7 @@ int main()
 	int ret_code = 0;
 	//更新相机设备列表
 	int camera_num = 0;
-	ret_code = DfUpdateDeviceList(camera_num);
+	ret_code = DfUpdateDeviceList(1, camera_num);
 	if (0 != ret_code || 0 == camera_num)
 	{
 		return -1;
