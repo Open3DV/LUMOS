@@ -3,7 +3,7 @@
 #include "../SDK/laser_3d_cam_dev.h" 
 #include <windows.h>
 #elif __linux
-#include "../SDK/laser_3d_cam.h" 
+#include "../SDK/laser_3d_cam_dev.h" 
 #include <cstring>
 #include <stdio.h> 
 #define fopen_s(pFile,filename,mode) ((*(pFile))=fopen((filename),  (mode)))==NULL
@@ -73,40 +73,40 @@ laser_3d_cam.exe --get-frame-01-hdr --ip 192.168.x.x --path ./frame_01_hdr\n\
 const char* help_info =
 "Examples:\n\
 \n\
-1.Get Frame 01: ²É¼¯²¢±£´æÒ»Ö¡ÁÁ¶ÈÍ¼¡¢Éî¶ÈÍ¼¡¢µãÔÆ\n\
+1.Get Frame 01: é‡‡é›†å¹¶ä¿å­˜ä¸€å¸§äº®åº¦å›¾ã€æ·±åº¦å›¾ã€ç‚¹äº‘\n\
 laser_3d_cam.exe --get-frame-01 --ip 192.168.x.x --path ./frame_01\n\
 \n\
-2.Get raw images (Mode 01): ²É¼¯²¢±£´æËùÓĞµÄÌõÎÆÍ¼Æ¬\n\
+2.Get raw images (Mode 01): é‡‡é›†å¹¶ä¿å­˜æ‰€æœ‰çš„æ¡çº¹å›¾ç‰‡\n\
 laser_3d_cam.exe --get-raw-01 --ip 192.168.x.x --path ./raw01_image_dir\n\
 \n\
-3.Get raw images (Mode 02): ²É¼¯²¢±£´æËùÓĞµÄÌõÎÆÍ¼Æ¬\n\
+3.Get raw images (Mode 02): é‡‡é›†å¹¶ä¿å­˜æ‰€æœ‰çš„æ¡çº¹å›¾ç‰‡\n\
 laser_3d_cam.exe --get-raw-02 --ip 192.168.x.x --path ./raw02_image_dir\n\
 \n\
-4.Set Camera Exposure Param: ÉèÖÃÏà»úÆØ¹âÊ±¼ä£¨10000us - 100000us£©\n\
+4.Set Camera Exposure Param: è®¾ç½®ç›¸æœºæ›å…‰æ—¶é—´ï¼ˆ10000us - 100000usï¼‰\n\
 laser_3d_cam.exe --set-camera-exposure-param --ip 192.168.x.x --exposure 12000\n\
 \n\
-5.Get Camera Exposure Param: »ñÈ¡Ïà»úÆØ¹âÊ±¼ä\n\
+5.Get Camera Exposure Param: è·å–ç›¸æœºæ›å…‰æ—¶é—´\n\
 laser_3d_cam.exe --get-camera-exposure-param --ip 192.168.x.x\n\
 \n\
-6.Set Camera Gain: ÉèÖÃÏà»úÔöÒæ\n\
+6.Set Camera Gain: è®¾ç½®ç›¸æœºå¢ç›Š\n\
 laser_3d_cam.exe --set-camera-gain --ip 192.168.x.x --gain 5\n\
 \n\
-7.Get Camera Gain: »ñÈ¡Ïà»úÔöÒæ\n\
+7.Get Camera Gain: è·å–ç›¸æœºå¢ç›Š\n\
 laser_3d_cam.exe --get-camera-gain --ip 192.168.x.x\n\
 \n\
-8.Get Frame test: »ñÈ¡Ïà»úµÄÒ»Ö¡Í¼ÏñÁÁ¶ÈÍ¼¡¢Éî¶ÈÍ¼¡¢µãÔÆÒÔ¼°ÌõÎÆÍ¼\n\
+8.Get Frame test: è·å–ç›¸æœºçš„ä¸€å¸§å›¾åƒäº®åº¦å›¾ã€æ·±åº¦å›¾ã€ç‚¹äº‘ä»¥åŠæ¡çº¹å›¾\n\
 laser_3d_cam.exe --get-frame-test --ip 192.168.x.x --path ./frame_test\n\
 \n\
-9.Set HDR Param: ÉèÖÃ¼¤¹âµÄ¶¯Ì¬ÆØ¹âÁÁ¶È²ÎÊı£¨ÔËĞĞµÃµ½Ä¬ÈÏµÄÎÄ¼ş£ºhdr_params.xml£»ĞŞ¸ÄÎÄ¼ş£ºhdr_params.xml£»ÁÁ¶È£º0-1023£¬×éÊı£º2-5£¬Ä¿Ç°²»Ö§³ÖÆØ¹âÊ±¼äÉèÖÃ£¬ÆØ¹âÊ±¼äÍ³Ò»Îª¡°Set Camera Exposure Param¡±ËùÖ¸¶¨£»ÒªÇó£º1.HDR×îºóÒ»×éµÄÁÁ¶ÈÓ¦Îª1023×îÁÁ£»2.HDRµÄÁÁ¶ÈÓ¦ÎªµİÔö£©\n\
+9.Set HDR Param: è®¾ç½®æ¿€å…‰çš„åŠ¨æ€æ›å…‰äº®åº¦å‚æ•°ï¼ˆè¿è¡Œå¾—åˆ°é»˜è®¤çš„æ–‡ä»¶ï¼šhdr_params.xmlï¼›ä¿®æ”¹æ–‡ä»¶ï¼šhdr_params.xmlï¼›äº®åº¦ï¼š0-1023ï¼Œç»„æ•°ï¼š2-5ï¼Œç›®å‰ä¸æ”¯æŒæ›å…‰æ—¶é—´è®¾ç½®ï¼Œæ›å…‰æ—¶é—´ç»Ÿä¸€ä¸ºâ€œSet Camera Exposure Paramâ€æ‰€æŒ‡å®šï¼›è¦æ±‚ï¼š1.HDRæœ€åä¸€ç»„çš„äº®åº¦åº”ä¸º1023æœ€äº®ï¼›2.HDRçš„äº®åº¦åº”ä¸ºé€’å¢ï¼‰\n\
 laser_3d_cam.exe --set-hdr-param --ip 192.168.x.x --path ./hdr_params.xml\n\
 \n\
-10.Get Frame 01 HDR: »ñÈ¡Ò»Ö¡µÄÁÁ¶ÈÊı¾İ\n\
+10.Get Frame 01 HDR: è·å–ä¸€å¸§çš„äº®åº¦æ•°æ®\n\
 laser_3d_cam.exe --get-frame-01-hdr --ip 192.168.x.x --path ./frame_01_hdr\n\
 \n\
-11.Set Camera Gamma: ÉèÖÃÏà»úGamma½ÃÕı\n\
+11.Set Camera Gamma: è®¾ç½®ç›¸æœºGammaçŸ«æ­£\n\
 laser_3d_cam.exe --set-camera-gamma --ip 192.168.x.x --gamma 0.5\n\
 \n\
-12.Get Camera Gamma: »ñÈ¡Ïà»úGamma½ÃÕı\n\
+12.Get Camera Gamma: è·å–ç›¸æœºGammaçŸ«æ­£\n\
 laser_3d_cam.exe --get-camera-gamma --ip 192.168.x.x\n\
 \n\
 ";
@@ -567,7 +567,7 @@ inline void write_fbin(std::ofstream& out, unsigned char val) {
 	out.write(reinterpret_cast<char*>(&val), sizeof(unsigned char));
 }
 
-//±£´æBinµãÔÆµ½plyÎÄ¼ş
+//ä¿å­˜Binç‚¹äº‘åˆ°plyæ–‡ä»¶
 bool SaveBinPointsToPly(cv::Mat deep_mat, string path, cv::Mat texture_map)
 {
 
@@ -760,7 +760,7 @@ bool SaveBinPointsToPly(cv::Mat deep_mat, string path, cv::Mat texture_map)
 
 
 			/*********************************************************************************************************/
-			//ÒÔ¶ş½øĞĞÖÆ±£´æ
+			//ä»¥äºŒè¿›è¡Œåˆ¶ä¿å­˜
 			std::ofstream outFile(path, std::ios::app | std::ios::binary);
 
 
@@ -843,7 +843,7 @@ bool SaveBinPointsToPly(cv::Mat deep_mat, string path, cv::Mat texture_map)
 			file.close();
 
 			/*********************************************************************************************************/
-			//ÒÔ¶ş½øĞĞÖÆ±£´æ
+			//ä»¥äºŒè¿›è¡Œåˆ¶ä¿å­˜
 			std::ofstream outFile(path, std::ios::app | std::ios::binary);
 
 			for (int i = 0; i < points_list.size(); i++)
@@ -1073,7 +1073,7 @@ bool depthToDepthColor(cv::Mat depth_map, cv::Mat& color_map, cv::Mat& grey_map,
 	cv::Mat handle_map(depth_map.size(), CV_8U, cv::Scalar(0));
 	cv::Mat mask_map(depth_map.size(), CV_8U, cv::Scalar(0));
 
-	// ÉèÖÃÓÃÓÚ·ÇÏßĞÔÏÔÊ¾µÄ²¿·Ö
+	// è®¾ç½®ç”¨äºéçº¿æ€§æ˜¾ç¤ºçš„éƒ¨åˆ†
 	float out_range_rate = 26. / 255.;
 	int gray_offset = 255 * out_range_rate / 2;
 	float range = high_z - low_z;
