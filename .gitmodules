@@ -1,0 +1,8 @@
+[submodule "LUMOS"]
+	path = LUMOS
+	url = https://github.com/Open3DV/LUMOS
+	branch = dev
+[submodule "3rdparty"]
+	path = 3rdparty
+	url = https://gitee.com/open3dv/thirdparty
+	branch = dev2
