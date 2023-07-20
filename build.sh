@@ -27,6 +27,7 @@ make -j4
 cp liblaser_3d_cam_sdk.so ../../example
 
 cd ../../example
+cp ../firmware/configuring_ip_info.cfg ./
 rm -r build
 mkdir build
 cd build 
@@ -60,3 +61,5 @@ cp ../example/laser_3d_cam.h ./lib/
 cp ../SDK/build/liblaser_3d_cam_sdk.so ./lib/
 cp ../example/libenumerate.so ./lib/
 cp ../example/enumerate.h ./lib/
+cp ../example/camera_status.h ./lib/
+cp ../firmware/configuring_ip_info.cfg ./lib/
