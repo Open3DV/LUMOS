@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #ifdef _WIN32 
 #include "../SDK/laser_3d_cam_dev.h" 
 #include <windows.h>
