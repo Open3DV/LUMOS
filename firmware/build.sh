@@ -13,7 +13,8 @@ chmod +x build.sh
 cd ../firmware/
 mkdir build
 cd build
-cp ../../3rdparty/ConfiguringIP/firmware/configuring_ip ./
+cp ../../3rdparty/ConfiguringIP/firmware/build/configuring_ip ./
 cp ../configuring_ip_info.cfg ./
+cp ../../3rdparty/linux-opencv-4.4.0/lib/* ./
 cmake ..
 make -j4
