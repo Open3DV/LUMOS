@@ -314,6 +314,47 @@ int handle_cmd_get_raw_02_16bit(int client_sock)
 
 }
 
+int handle_cmd_get_raw_03(int client_sock)
+{
+
+    if (check_token(client_sock) == DF_FAILED)
+    {
+        return DF_FAILED;
+    }
+
+    int image_num = 28;
+
+    int width = 0;
+    int height = 0;
+    int rgb_width = 0;
+    int rgb_height = 0;
+    scan3d_.getCameraResolution(width, height);
+    scan3d_.getRGBCameraResolution(rgb_width, rgb_height);
+
+    int buffer_size = height * width * image_num + rgb_width * rgb_height * 3;
+    unsigned char* buffer = new unsigned char[buffer_size];
+
+    scan3d_.captureRaw03(buffer);
+
+    LOG(INFO) << "start send image, buffer_size= " << buffer_size;
+    int ret = send_buffer(client_sock, (char*)buffer, buffer_size);
+
+    LOG(INFO) << "ret= " << ret;
+
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!";
+        delete[] buffer;
+        return DF_FAILED;
+    }
+
+    LOG(INFO) << "image sent!";
+
+    delete[] buffer;
+    return DF_SUCCESS;
+
+}
+
 int handle_cmd_get_frame_01_parallel(int client_sock)
 {
     if (check_token(client_sock) == DF_FAILED)
@@ -1158,7 +1199,6 @@ int handle_cmd_set_param_generate_brightness(int client_sock)
     return DF_SUCCESS;
 }
 
-//��ȡ����ֱ���
 int handle_cmd_get_param_camera_resolution(int client_sock)
 {
     if (check_token(client_sock) == DF_FAILED)
@@ -1170,6 +1210,41 @@ int handle_cmd_get_param_camera_resolution(int client_sock)
     int height = 0;
 
     scan3d_.getCameraResolution(width, height);
+
+    // lc3010.read_dmd_device_id(version); 
+
+    int ret = send_buffer(client_sock, (char*)(&width), sizeof(int) * 1);
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!\n";
+        return DF_FAILED;
+    }
+
+    ret = send_buffer(client_sock, (char*)(&height), sizeof(int) * 1);
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!\n";
+        return DF_FAILED;
+    }
+
+    LOG(INFO) << "camera width: " << width;
+    LOG(INFO) << "camera height: " << height;
+
+    return DF_SUCCESS;
+
+}
+
+int handle_cmd_get_param_rgb_camera_resolution(int client_sock)
+{
+    if (check_token(client_sock) == DF_FAILED)
+    {
+        return DF_FAILED;
+    }
+
+    int width = 0;
+    int height = 0;
+
+    scan3d_.getRGBCameraResolution(width, height);
 
     // lc3010.read_dmd_device_id(version); 
 
@@ -1781,6 +1856,10 @@ int handle_commands(int client_sock)
         LOG(INFO) << "DF_CMD_GET_RAW_02";
         ret = handle_cmd_get_raw_02_16bit(client_sock);
         break;
+    case DF_CMD_GET_RAW_03:
+        LOG(INFO) << "DF_CMD_GET_RAW_03";
+        ret = handle_cmd_get_raw_03(client_sock);
+        break;
     case DF_CMD_GET_FRAME_01:
         LOG(INFO) << "DF_CMD_GET_FRAME_01";
         ret = handle_cmd_get_frame_01_parallel(client_sock);
@@ -1845,6 +1924,10 @@ int handle_commands(int client_sock)
     case DF_CMD_GET_CAMERA_RESOLUTION:
         LOG(INFO) << "DF_CMD_GET_CAMERA_RESOLUTION";
         ret = handle_cmd_get_param_camera_resolution(client_sock);
+        break;
+    case DF_CMD_GET_RGB_CAMERA_RESOLUTION:
+        LOG(INFO) << "DF_CMD_GET_RGB_CAMERA_RESOLUTION";
+        ret = handle_cmd_get_param_rgb_camera_resolution(client_sock);
         break;
     case DF_CMD_SET_PARAM_HDR:
         LOG(INFO) << "DF_CMD_SET_PARAM_HDR";

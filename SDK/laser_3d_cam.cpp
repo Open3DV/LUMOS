@@ -60,7 +60,10 @@ bool connected_flag_ = false;
 
 int camera_width_ = 1920;
 int camera_height_ = 1200;
+int rgb_camera_width_ = 1920;
+int rgb_camera_height_ = 1200;
 int image_size_ = camera_width_ * camera_height_;
+int rgb_image_size_ = rgb_camera_width_ * rgb_camera_height_ * 3;
 
 const char* camera_ip_ = "";
 
@@ -381,7 +384,9 @@ DF_SDK_API int DfConnect(const char* camera_id)
 	}
 
 	int width, height;
+	int rgb_width, rgb_height;
 	ret = DfGetCameraResolution(&width, &height);
+	ret = DfGetRGBCameraResolution(&rgb_width, &rgb_height);
 	if (ret != DF_SUCCESS)
 	{
 		DfDisconnectNet();
@@ -394,8 +399,16 @@ DF_SDK_API int DfConnect(const char* camera_id)
 		return DF_ERROR_2D_CAMERA;
 	}
 
+	if (rgb_width <= 0 || rgb_height <= 0)
+	{
+		LOG(INFO) << "error rgb camera";
+	}
+
 	camera_width_ = width;
 	camera_height_ = height;
+
+	rgb_camera_width_ = rgb_width;
+	rgb_camera_height_ = rgb_height;
 
 	camera_ip_ = camera_id;
 	connected_flag_ = true;
@@ -473,11 +486,6 @@ DF_SDK_API int DfConnect(const char* camera_id)
 	return 0;
 }
 
-//函数名： DfGetCameraResolution
-//功能： 获取相机分辨率
-//输入参数： 无
-//输出参数： width(图像宽)、height(图像高)
-//返回值： 类型（int）:返回0表示获取参数成功;返回-1表示获取参数失败.
 DF_SDK_API int DfGetCameraResolution(int* width, int* height)
 {
 	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
@@ -541,6 +549,73 @@ DF_SDK_API int DfGetCameraResolution(int* width, int* height)
 
 	LOG(INFO) << "width: " << *width;
 	LOG(INFO) << "height: " << *height;
+	return DF_SUCCESS;
+
+}
+
+DF_SDK_API int DfGetRGBCameraResolution(int* width, int* height)
+{
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+
+	LOG(INFO) << "DfGetRGBCameraResolution:";
+	*width = rgb_camera_width_;
+	*height = rgb_camera_height_;
+
+	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+	if (ret == DF_FAILED)
+	{
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+	ret = send_command(DF_CMD_GET_RGB_CAMERA_RESOLUTION, g_sock);
+	ret = send_buffer((char*)&token, sizeof(token), g_sock);
+	int command;
+	ret = recv_command(&command, g_sock);
+	if (ret == DF_FAILED)
+	{
+		LOG(ERROR) << "Failed to recv command";
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+	if (command == DF_CMD_OK)
+	{
+
+		ret = recv_buffer((char*)(width), sizeof(int), g_sock);
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		ret = recv_buffer((char*)(height), sizeof(int), g_sock);
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+	}
+	else if (command == DF_CMD_REJECT)
+	{
+		close_socket(g_sock);
+		return DF_BUSY;
+	}
+	else if (command == DF_CMD_UNKNOWN)
+	{
+
+		close_socket(g_sock);
+		return DF_UNKNOWN;
+	}
+
+	close_socket(g_sock);
+	rgb_image_size_ = (*width) * (*height) * 3;
+
+	LOG(INFO) << "rgb_width: " << *width;
+	LOG(INFO) << "rgb_height: " << *height;
 	return DF_SUCCESS;
 
 }
@@ -1142,6 +1217,62 @@ DF_SDK_API int DfGetCameraRawData02(unsigned short* raw, int raw_buf_size)
 			return DF_FAILED;
 		}
 		ret = send_command(DF_CMD_GET_RAW_02, g_sock);
+		ret = send_buffer((char*)&token, sizeof(token), g_sock);
+		int command;
+		ret = recv_command(&command, g_sock);
+		if (ret == DF_FAILED)
+		{
+			LOG(ERROR) << "Failed to recv command";
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		if (command == DF_CMD_OK)
+		{
+			LOG(INFO) << "token checked ok";
+			LOG(INFO) << "receiving buffer, raw_buf_size=" << raw_buf_size;
+			ret = recv_buffer((char*)raw, raw_buf_size, g_sock);
+			LOG(INFO) << "images received";
+			if (ret == DF_FAILED)
+			{
+				close_socket(g_sock);
+				return DF_FAILED;
+			}
+		}
+		else if (command == DF_CMD_REJECT)
+		{
+			LOG(INFO) << "Get raw rejected";
+			close_socket(g_sock);
+			return DF_BUSY;
+		}
+
+		LOG(INFO) << "Get raw success";
+		close_socket(g_sock);
+		return DF_SUCCESS;
+	}
+	return DF_FAILED;
+}
+
+DF_SDK_API int DfGetCameraRawData03(unsigned char* raw, int raw_buf_size)
+{
+	int img_num = 28;
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+
+	if (raw)
+	{
+		LOG(INFO) << "GetRaw03";
+		assert(raw_buf_size >= image_size_ * sizeof(unsigned char) * img_num + rgb_image_size_);
+		int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+		ret = send_command(DF_CMD_GET_RAW_03, g_sock);
 		ret = send_buffer((char*)&token, sizeof(token), g_sock);
 		int command;
 		ret = recv_command(&command, g_sock);

@@ -11,7 +11,26 @@ find_package(Threads)
 find_package(CUDA REQUIRED) 
 set(OPENCV_DIR /home/ainstec/lumos/3rdparty)
 
+set(JETSON_MULTILIB_DIR /usr/src/jetson_multimedia_api/)
+set(CLASS_DIR ${JETSON_MULTILIB_DIR}/samples/common/classes)
+set(ALGO_CUDA_DIR ${JETSON_MULTILIB_DIR}/samples/common/algorithm/cuda)
+set(ALGO_TRT_DIR ${JETSON_MULTILIB_DIR}/samples/common/algorithm/trt)
+set(TEGRA_ARMABI aarch64-linux-gnu)
+set(CUDA_PATH /usr/local/cuda)
+set(ARGUS_UTILS_DIR ${JETSON_MULTILIB_DIR}/argus/samples/utils)
+
+
 message(${PROJECT_SOURCE_DIR})
+
+include_directories(${JETSON_MULTILIB_DIR}/include)
+include_directories(${JETSON_MULTILIB_DIR}/include/libjpeg-8b)
+include_directories(${ALGO_CUDA_DIR})
+include_directories(${ALGO_TRT_DIR})
+include_directories(${CUDA_PATH}/include)
+include_directories(/usr/include/${TEGRA_ARMABI})
+include_directories(/usr/include/libdrm)
+include_directories(${ARGUS_UTILS_DIR})
+
 
 include_directories(${OPENCV_DIR}/linux-opencv-4.4.0/include)
 include_directories(${OPENCV_DIR}/linux-opencv-4.4.0/modules/core/include)
@@ -28,6 +47,11 @@ include_directories(${OPENCV_DIR}/linux-opencv-4.4.0/modules/objdetect/include)
 include_directories(${OPENCV_DIR}/linux-opencv-4.4.0/modules/photo/include)
 include_directories(${OPENCV_DIR}/linux-opencv-4.4.0/modules/stitching/include)
 include_directories(${OPENCV_DIR}/linux-opencv-4.4.0/modules/video/include)
+
+link_directories(/lib/${TEGRA_ARMABI})
+link_directories(/usr/lib/${TEGRA_ARMABI})
+link_directories(/usr/lib/${TEGRA_ARMABI}/tegra)
+link_directories(${CUDA_PATH}/lib64)
 
 link_directories(${OPENCV_DIR}/linux-opencv-4.4.0/lib)
 link_libraries(${OPENCV_DIR}/linux-opencv-4.4.0/lib/libopencv_core.so.4.4)
@@ -64,10 +88,18 @@ add_executable(camera_server
                     camera_mvs.cpp
                     scan3d.cpp
                     camera.cpp
+		        camera_mipi.cpp
                     merge_hdr.cu
                     projector_base.cpp
                     projector_ainstec.cpp
                     serial_function.cpp
+                    ${ARGUS_UTILS_DIR}/Thread.cpp
+                    ${CLASS_DIR}/NvApplicationProfiler.cpp  ${CLASS_DIR}/NvElementProfiler.cpp  ${CLASS_DIR}/NvV4l2Element.cpp
+                    ${CLASS_DIR}/NvBuffer.cpp               ${CLASS_DIR}/NvJpegDecoder.cpp      ${CLASS_DIR}/NvV4l2ElementPlane.cpp
+                    ${CLASS_DIR}/NvDrmRenderer.cpp          ${CLASS_DIR}/NvJpegEncoder.cpp      ${CLASS_DIR}/NvVideoConverter.cpp
+                    ${CLASS_DIR}/NvEglRenderer.cpp          ${CLASS_DIR}/NvLogging.cpp          ${CLASS_DIR}/NvVideoDecoder.cpp
+                    ${CLASS_DIR}/NvElement.cpp              ${CLASS_DIR}/NvUtils.cpp            ${CLASS_DIR}/NvVideoEncoder.cpp
                     )
-target_link_libraries(camera_server PRIVATE Threads::Threads)
+target_link_libraries(camera_server PRIVATE Threads::Threads
+pthread v4l2 EGL GLESv2 X11 nvbuf_utils nvjpeg nvosd drm cuda cudart nveglstream_camconsumer nvargus_socketclient ${OpenCV_LIBS})
 

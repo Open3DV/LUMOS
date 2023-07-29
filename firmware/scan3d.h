@@ -2,7 +2,9 @@
 #define SCAN_3D_H
 
 #pragma once
+#include "easylogging++.h"
 #include "camera_mvs.h"
+#include "camera_mipi.h"
 #include "camera_param.h"
 #include "vector"
 #include "system_config_settings.h"
@@ -42,6 +44,8 @@ public:
     bool captureRaw01(unsigned char* buff);
 
     bool captureRaw01_16bit(unsigned short* buff);
+
+    bool captureRaw03(unsigned char* buff);
     
     int captureFrame01();
 
@@ -64,6 +68,8 @@ public:
     void copyPointcloudData(float* &ptr);
 
     void getCameraResolution(int &width, int &height);
+
+    void getRGBCameraResolution(int &width, int &height);
     
     int captureFrame02();
 
@@ -103,6 +109,7 @@ private:
  
     Camera* camera_left_;
     Camera* camera_right_;
+    Camera* camera_rgb_;
 
     bool camera_opened_;
     bool camera_left_opened_;
@@ -126,6 +133,9 @@ private:
 
     int image_width_;
     int image_height_;
+
+    int rgb_image_width_;
+    int rgb_image_height_;
 
     unsigned char* buff_brightness_;
     float* buff_depth_;

@@ -41,31 +41,34 @@ laser_3d_cam.exe --get-raw-01 --ip 192.168.x.x --path ./raw01_image_dir\n\
 5.Get raw images (Mode 02): \n\
 laser_3d_cam.exe --get-raw-02 --ip 192.168.x.x --path ./raw02_image_dir\n\
 \n\
-6.Set Brightness Param: \n\
+6.Get raw images (Mode 03): \n\
+laser_3d_cam.exe --get-raw-03 --ip 192.168.x.x --path ./raw03_image_dir\n\
+\n\
+7.Set Brightness Param: \n\
 laser_3d_cam.exe --set-brightness-param --ip 192.168.x.x --model 2 --exposure 12000\n\
 \n\
-7.Get Brightness Param: \n\
+8.Get Brightness Param: \n\
 laser_3d_cam.exe --get-brightness-param --ip 192.168.x.x\n\
 \n\
-8.Set Camera Exposure Param: \n\
+9.Set Camera Exposure Param: \n\
 laser_3d_cam.exe --set-camera-exposure-param --ip 192.168.x.x --exposure 12000\n\
 \n\
-9.Get Camera Exposure Param: \n\
+10.Get Camera Exposure Param: \n\
 laser_3d_cam.exe --get-camera-exposure-param --ip 192.168.x.x\n\
 \n\
-10.Set Camera Gain: \n\
+11.Set Camera Gain: \n\
 laser_3d_cam.exe --set-camera-gain --ip 192.168.x.x --gain 1023\n\
 \n\
-11.Get Camera Gain: \n\
+12.Get Camera Gain: \n\
 laser_3d_cam.exe --get-camera-gain --ip 192.168.x.x\n\
 \n\
-12.Get Frame test:\n\
+13.Get Frame test:\n\
 laser_3d_cam.exe --get-frame-test --ip 192.168.x.x --path ./frame_test\n\
 \n\
-13.Set HDR Param: \n\
+14.Set HDR Param: \n\
 laser_3d_cam.exe --set-hdr-param --ip 192.168.x.x --path ./hdr_params.xml\n\
 \n\
-14.Get Frame 01 HDR:\n\
+15.Get Frame 01 HDR:\n\
 laser_3d_cam.exe --get-frame-01-hdr --ip 192.168.x.x --path ./frame_01_hdr\n\
 \n\
 ";
@@ -82,31 +85,34 @@ laser_3d_cam.exe --get-raw-01 --ip 192.168.x.x --path ./raw01_image_dir\n\
 3.Get raw images (Mode 02): 采集并保存所有的条纹图片\n\
 laser_3d_cam.exe --get-raw-02 --ip 192.168.x.x --path ./raw02_image_dir\n\
 \n\
-4.Set Camera Exposure Param: 设置相机曝光时间（10000us - 100000us）\n\
+4.Get raw images (Mode 03): 采集并保存所有的条纹图片\n\
+laser_3d_cam.exe --get-raw-03 --ip 192.168.x.x --path ./raw03_image_dir\n\
+\n\
+5.Set Camera Exposure Param: 设置相机曝光时间（10000us - 100000us）\n\
 laser_3d_cam.exe --set-camera-exposure-param --ip 192.168.x.x --exposure 12000\n\
 \n\
-5.Get Camera Exposure Param: 获取相机曝光时间\n\
+6.Get Camera Exposure Param: 获取相机曝光时间\n\
 laser_3d_cam.exe --get-camera-exposure-param --ip 192.168.x.x\n\
 \n\
-6.Set Camera Gain: 设置相机增益\n\
+7.Set Camera Gain: 设置相机增益\n\
 laser_3d_cam.exe --set-camera-gain --ip 192.168.x.x --gain 5\n\
 \n\
-7.Get Camera Gain: 获取相机增益\n\
+8.Get Camera Gain: 获取相机增益\n\
 laser_3d_cam.exe --get-camera-gain --ip 192.168.x.x\n\
 \n\
-8.Get Frame test: 获取相机的一帧图像亮度图、深度图、点云以及条纹图\n\
+9.Get Frame test: 获取相机的一帧图像亮度图、深度图、点云以及条纹图\n\
 laser_3d_cam.exe --get-frame-test --ip 192.168.x.x --path ./frame_test\n\
 \n\
-9.Set HDR Param: 设置激光的动态曝光亮度参数（运行得到默认的文件：hdr_params.xml；修改文件：hdr_params.xml；亮度：0-1023，组数：2-5，目前不支持曝光时间设置，曝光时间统一为“Set Camera Exposure Param”所指定；要求：1.HDR最后一组的亮度应为1023最亮；2.HDR的亮度应为递增）\n\
+10.Set HDR Param: 设置激光的动态曝光亮度参数（运行得到默认的文件：hdr_params.xml；修改文件：hdr_params.xml；亮度：0-1023，组数：2-5，目前不支持曝光时间设置，曝光时间统一为“Set Camera Exposure Param”所指定；要求：1.HDR最后一组的亮度应为1023最亮；2.HDR的亮度应为递增）\n\
 laser_3d_cam.exe --set-hdr-param --ip 192.168.x.x --path ./hdr_params.xml\n\
 \n\
-10.Get Frame 01 HDR: 获取一帧的亮度数据\n\
+11.Get Frame 01 HDR: 获取一帧的亮度数据\n\
 laser_3d_cam.exe --get-frame-01-hdr --ip 192.168.x.x --path ./frame_01_hdr\n\
 \n\
-11.Set Camera Gamma: 设置相机Gamma矫正\n\
+12.Set Camera Gamma: 设置相机Gamma矫正\n\
 laser_3d_cam.exe --set-camera-gamma --ip 192.168.x.x --gamma 0.5\n\
 \n\
-12.Get Camera Gamma: 获取相机Gamma矫正\n\
+13.Get Camera Gamma: 获取相机Gamma矫正\n\
 laser_3d_cam.exe --get-camera-gamma --ip 192.168.x.x\n\
 \n\
 ";
@@ -125,6 +131,7 @@ bool SaveBinPointsToPly(cv::Mat deep_mat, string path, cv::Mat texture_map);
 int on_dropped(void* param);
 int get_raw_01(const char* ip, const char* raw_image_dir);
 int get_raw_02(const char* ip, const char* raw_image_dir);
+int get_raw_03(const char* ip, const char* raw_image_dir);
 int get_calib_param(const char* ip, const char* calib_param_path);
 int set_calib_param(const char* ip, const char* calib_param_path);
 int set_generate_brightness_param(const char* ip, int model, float exposure);
@@ -152,6 +159,7 @@ enum opt_set
 	SET_CALIB_PARAM,
 	GET_RAW_01,
 	GET_RAW_02,
+	GET_RAW_03,
 	GET_FRAME_01,
 	GET_FRAME_01_HDR,
 	GET_FRAME_TEST,
@@ -187,6 +195,7 @@ static struct option long_options[] =
 	{"set-calib-param",no_argument,NULL,SET_CALIB_PARAM},
 	{"get-raw-01",no_argument,NULL,GET_RAW_01},
 	{"get-raw-02",no_argument,NULL,GET_RAW_02},
+	{"get-raw-03",no_argument,NULL,GET_RAW_03},
 	{"get-frame-01",no_argument,NULL,GET_FRAME_01},
 	{"get-frame-01-hdr",no_argument,NULL,GET_FRAME_01_HDR},
 	{"get-frame-test",no_argument,NULL,GET_FRAME_TEST},
@@ -272,11 +281,12 @@ int main(int argc, char* argv[])
 	case GET_RAW_01:
 		get_raw_01(camera_id, path);
 		break;
-	break;
 	case GET_RAW_02:
 		get_raw_02(camera_id, path);
 		break;
-	break;
+	case GET_RAW_03:
+		get_raw_03(camera_id, path);
+		break;
 	case GET_FRAME_01:
 		get_frame_01(camera_id, path);
 		break;
@@ -1242,6 +1252,51 @@ int get_raw_02(const char* ip, const char* raw_image_dir)
 	ret = DfGetCameraRawData02(raw_buf, image_size * capture_num);
 
 	save_images_16bit(raw_image_dir, raw_buf, width, height, capture_num);
+
+	delete[] raw_buf;
+
+	DfDisconnectNet();
+	return 1;
+}
+
+int get_raw_03(const char* ip, const char* raw_image_dir)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnectNet(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+	int width, height;
+	int rgb_width, rgb_height;
+
+	DfGetCameraResolution(&width, &height);
+	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
+
+	int capture_num = 28;
+
+	int image_size = width * height;
+	int rgb_image_size = rgb_width * rgb_height * 3;
+
+	size_t buf_size = image_size * capture_num + rgb_image_size;
+
+	unsigned char* raw_buf = new unsigned char[buf_size];
+
+	ret = DfGetCameraRawData03(raw_buf, buf_size);
+
+	save_images(raw_image_dir, raw_buf, width, height, capture_num);
+
+	std::stringstream ss;
+	ss << std::setw(2) << std::setfill('0') << capture_num;
+	std::string folderPath = raw_image_dir;
+	std::string fileName = folderPath + +"/phase" + ss.str() + ".bmp";
+	cv::Mat rgb_image(rgb_height, rgb_width, CV_8UC3, raw_buf + (image_size * capture_num));
+	//cv::imshow("rgb_image", rgb_image);
+	//cv::waitKey(0);
+	
+	cv::imwrite(fileName, rgb_image);
 
 	delete[] raw_buf;
 

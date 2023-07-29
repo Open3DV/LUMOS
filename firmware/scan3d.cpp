@@ -1,9 +1,9 @@
 #include "scan3d.h"
-#include "easylogging++.h"
 #include "protocol.h"
 #include "management.cuh"
 #include <fstream>
 
+//INITIALIZE_EASYLOGGINGPP
  
 Scan3D::Scan3D()
 {
@@ -102,7 +102,30 @@ int Scan3D::init()
             camera_opened_flag_ = true;
         }
     }
-    
+    camera_rgb_ = new CameraMIPI();
+    if (camera_rgb_->openCamera())
+    {
+        LOG(INFO) << "open rgb camera success!";
+        camera_rgb_->streamOn();
+        camera_rgb_->getImageSize(rgb_image_width_, rgb_image_height_);
+        cv::Mat img_tepm(rgb_image_height_, rgb_image_width_, CV_8UC3);
+        for (int i = 0; i < 10; i += 1)
+        {
+            camera_rgb_->grap(img_tepm.data);
+            // cv::imshow("test", img_tepm);
+            // cv::waitKey(0);
+            LOG(INFO) << "grep rgb " << i << "th";
+        }
+        camera_rgb_->streamOff();
+
+    }
+    else
+    {
+        LOG(INFO) << "open rgb camera failed!";
+    }
+
+
+
     camera_left_->switchToExternalTriggerMode();   
     camera_right_->switchToExternalTriggerMode();
     //camera_->switchToInternalTriggerMode();
@@ -694,6 +717,104 @@ bool Scan3D::captureRaw01_16bit(unsigned short* buff)
 
     delete[] img_ptr_left;
     delete[] img_ptr_right;
+
+    return true;
+}
+
+
+bool Scan3D::captureRaw03(unsigned char* buff)
+{
+    projector_->setProjectorExposure(camera_exposure_);
+    LOG(INFO) << "setPixelFormat(8)";
+
+    camera_left_->setPixelFormat(8);
+    camera_right_->setPixelFormat(8);
+
+    if (!camera_left_->streamOn())
+    {
+        LOG(INFO) << "Stream On Error";
+        camera_rgb_->streamOff();
+        camera_left_->streamOff();
+        camera_right_->streamOff();
+        camera_left_->setPixelFormat(12);
+        camera_right_->setPixelFormat(12);
+        return false;
+    }
+    if (!camera_right_->streamOn())
+    {
+        LOG(INFO) << "Stream On Error";
+        camera_rgb_->streamOff();
+        camera_left_->streamOff();
+        camera_right_->streamOff();
+        camera_left_->setPixelFormat(12);
+        camera_right_->setPixelFormat(12);
+        return false;
+    }
+
+
+    int img_size = image_width_*image_height_;
+
+    unsigned char *img_ptr_left= new unsigned char[image_width_*image_height_];
+    unsigned char *img_ptr_right= new unsigned char[image_width_*image_height_];
+
+    projector_->project();
+
+
+    // for (int i = 0; i < 12; i += 1)
+    // {
+    //     if (!camera_left_->grap(img_ptr_left) || !camera_right_->grap(img_ptr_right))
+    //     {
+    //         camera_left_->streamOff();
+    //         camera_right_->streamOff();
+            
+    //         return false;
+    //     }
+    // }
+
+    for (int i = 0; i < 14; i++)
+    {
+        LOG(INFO)<<"grap "<<i<<" image:";
+        if (!camera_left_->grap(img_ptr_left))
+        {
+            camera_left_->streamOff();
+            camera_right_->streamOff();
+            camera_left_->setPixelFormat(12);
+            camera_right_->setPixelFormat(12);
+            return false;
+        }
+        if (!camera_right_->grap(img_ptr_right))
+        {
+            camera_left_->streamOff();
+            camera_right_->streamOff();
+            camera_left_->setPixelFormat(12);
+            camera_right_->setPixelFormat(12);
+            return false;
+        }
+ 
+        memcpy(buff+img_size*i, img_ptr_left, img_size);
+        memcpy(buff+img_size*(i+14), img_ptr_right, img_size);
+  
+    }
+    
+    if (camera_rgb_->streamOn())
+    {
+        camera_rgb_->grap(buff + (28 * img_size));
+        camera_rgb_->streamOff();
+    }
+
+    camera_left_->streamOff();
+    camera_right_->streamOff();
+
+    //if (1 != generate_brightness_model_)
+    //{
+    //    captureTextureImage(generate_brightness_model_, generate_brightness_exposure_, img_ptr_left);
+    //    memcpy(buff + img_size * 19, img_ptr_left, img_size);
+    //}
+
+    delete[] img_ptr_left;
+    delete[] img_ptr_right;
+    camera_left_->setPixelFormat(12);
+    camera_right_->setPixelFormat(12);
 
     return true;
 }
@@ -1638,8 +1759,18 @@ void Scan3D::copyPointcloudData(float* &ptr)
 
 void Scan3D::getCameraResolution(int &width, int &height)
 {
+    LOG(INFO) << "image_width: " << image_width_;
+    LOG(INFO) << "image_height: " << image_height_;
     width = image_width_;
     height = image_height_;
+}
+
+void Scan3D::getRGBCameraResolution(int &width, int &height)
+{
+    LOG(INFO) << "rgb_image_width: " << rgb_image_width_;
+    LOG(INFO) << "rgb_image_height: " << rgb_image_height_;
+    width = rgb_image_width_;
+    height = rgb_image_height_;
 }
 
 void Scan3D::removeOutlierBaseDepthFilter()
