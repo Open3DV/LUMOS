@@ -18,6 +18,7 @@
 #define SELECT_HEIGHT_MAP_FLAG_ 2;
 #define SELECT_COLOR_DEPTH_FLAG_ 3;
 #define SELECT_CALIBRATE_RAW_FLAG_ 4;
+#define SELECT_BRIGHT_RAW_FLAG_ 5;
 
 #define GENERATE_BRIGHTNESS_DEFAULT_ 1;
 #define GENERATE_BRIGHTNESS_ILLUMINATION_ 2;
@@ -64,6 +65,8 @@ public:
 	void captureOneRawFrameBaseThread();
 
 	bool captureOneFrameData();
+
+	bool MergeRBGImage(cv::Mat& image1, cv::Mat& image2, cv::Mat& dstImage);
 
 	bool captureOneFrameAndRender();
 
@@ -156,6 +159,8 @@ private slots:
 	void do_QRadioButton_toggled_gray_depth(bool state);
 
 	void do_QRadioButton_toggled_calibration(bool state);
+
+	void do_QRadioButton_toggled_bright_raw(bool state);
 
 	void do_QRadioButton_toggled_generate_brightness_default(bool state);
 
@@ -255,6 +260,7 @@ private:
 	std::vector<cv::Mat> raw_images_left_;
 	std::vector<cv::Mat> raw_images_right_;
 	cv::Mat render_image_raw_;
+	cv::Mat render_image_calib_raw_;
 
 	int min_depth_value_;
 	int max_depth_value_;
@@ -264,6 +270,8 @@ private:
 	bool connected_flag_;
 	int camera_width_;
 	int camera_height_;
+	int rgb_camera_width_;
+	int rgb_camera_height_;
 
 
 	GuiConfigDataStruct processing_gui_settings_data_;

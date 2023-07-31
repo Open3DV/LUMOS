@@ -236,6 +236,7 @@ bool CameraCaptureGui::initializeFunction()
 	connect(ui.radioButton_depth_color, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_color_depth(bool)));
 	connect(ui.radioButton_depth_grey, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_gray_depth(bool)));
 	connect(ui.radioButton_calibration, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_calibration(bool)));
+	connect(ui.radioButton_bright_raw, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_bright_raw(bool)));
 	 
 	connect(ui.comboBox_ip, SIGNAL(activated(int)), this, SLOT(do_comboBox_activated_ip(int))); 
 	connect(ui.checkBox_over_exposure, SIGNAL(toggled(bool)), this, SLOT(do_checkBox_toggled_over_exposure(bool)));
@@ -1655,6 +1656,36 @@ void CameraCaptureGui::captureOneFrameBaseThread(bool hdr)
 	capturing_flag_ = false;
 }
 
+bool CameraCaptureGui::MergeRBGImage(cv::Mat& image1, cv::Mat& image2, cv::Mat& dstImage)
+{
+	int w1 = image1.cols;
+	int h1 = image1.rows;
+	int w2 = image2.cols;
+	int h2 = image2.rows;
+	cv::Mat src_image = image1;
+	dstImage = cv::Mat(h1 + h2, w1 > w2 ? w1 : w2, CV_8UC3, cv::Scalar(255, 255, 255));
+	for (int row = 0; row < dstImage.rows; row += 1)
+	{
+		int start_col = row < h1 ? (dstImage.cols - w1) / 2 : (dstImage.cols - w2) / 2;
+		int cols = row < h1 ? w1 : w2;
+		if (row == h1)
+		{
+			src_image = image2;
+		}
+
+		cv::Vec3b* dst_image_ptr = dstImage.ptr<cv::Vec3b>(row);
+		cv::Vec3b* src_image_ptr = src_image.ptr<cv::Vec3b>(row < h1 ? row : row - h1);
+
+		for (int col = 0; col < cols; col += 1)
+		{
+			dst_image_ptr[start_col + col] = src_image_ptr[col];
+		}
+	}
+
+	return true;
+}
+
+
 void CameraCaptureGui::captureOneRawFrameBaseThread()
 {
 
@@ -1674,14 +1705,17 @@ void CameraCaptureGui::captureOneRawFrameBaseThread()
 
 	int width = camera_width_;
 	int height = camera_height_;
+	int rgb_width = rgb_camera_width_;
+	int rgb_height = rgb_camera_height_;
 
 	int image_size = width * height;
+	int rgb_image_size = rgb_width * rgb_height * 3;
 
-	unsigned char* raw_images_buffer = new unsigned char[(long long)image_size * 28];
+	unsigned char* raw_images_buffer = new unsigned char[(long long)image_size * 28 + rgb_image_size];
 
 	int ret_code = -1;
  
-	ret_code = DfGetCameraRawData01(raw_images_buffer, (long long)image_size * 28);
+	ret_code = DfGetCameraRawData03(raw_images_buffer, (long long)image_size * 28 + rgb_image_size);
 
 	if (DF_SUCCESS != ret_code)
 	{
@@ -1700,17 +1734,28 @@ void CameraCaptureGui::captureOneRawFrameBaseThread()
 		cv::Mat image_left_bright(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 12));
 		cv::Mat image_right_bright(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 26));
 
-		//image_left_bright.convertTo(image_left_bright, CV_8UC3);
-		//image_right_bright.convertTo(image_right_bright, CV_8UC3);
+		cv::Mat image_rgb(rgb_height, rgb_width, CV_8UC3, raw_images_buffer + ((long long)image_size * 28));
+
+		cv::Mat image_rgb2gray;
 		cv::cvtColor(image_left_bright, image_left_bright, cv::COLOR_GRAY2BGR);
 		cv::cvtColor(image_right_bright, image_right_bright, cv::COLOR_GRAY2BGR);
+		cv::cvtColor(image_rgb, image_rgb2gray, cv::COLOR_BGR2GRAY);
+		cv::imwrite("image_rgb.bmp", image_rgb);
+		cv::cvtColor(image_rgb, image_rgb, cv::COLOR_BGR2RGB);
+		cv::imwrite("image_rgb2gray.bmp", image_rgb2gray);
 
 		Calibrate_Function calib_function;
 		calib_function.setBoardMessage(board_message_);
 
-		std::vector<cv::Point2f> circle_points[2];
+		std::vector<cv::Point2f> circle_points[3];
 		bool found_l = calib_function.findCircleBoardFeature(image_left, circle_points[0]);
 		bool found_r = calib_function.findCircleBoardFeature(image_right, circle_points[1]);
+		cv::SimpleBlobDetector::Params params;
+		params.minArea = 200;
+		cv::Ptr<cv::SimpleBlobDetector> detector = cv::SimpleBlobDetector::create(params);
+		cv::bitwise_not(image_rgb2gray, image_rgb2gray);
+		bool found_rgb = cv::findCirclesGrid(image_rgb2gray, cv::Size(board_message_.cols, board_message_.rows), circle_points[2], cv::CALIB_CB_ASYMMETRIC_GRID | cv::CALIB_CB_CLUSTERING, detector);
+
 
 		cv::Mat color_img_l;
 		cv::Mat color_img_r;
@@ -1719,13 +1764,15 @@ void CameraCaptureGui::captureOneRawFrameBaseThread()
 		cv::cvtColor(image_right, color_img_r, cv::COLOR_GRAY2BGR);
 		cv::drawChessboardCorners(color_img_l, board_size, circle_points[0], found_l);
 		cv::drawChessboardCorners(color_img_r, board_size, circle_points[1], found_r);
+		cv::drawChessboardCorners(image_rgb, board_size, circle_points[2], found_rgb);
+
+		cv::resize(image_rgb, image_rgb, cv::Size(image_rgb.cols / 2, image_rgb.rows / 2));
 
 		cv::Mat dark_temp;
 		cv::Mat bright_temp;
 		cv::hconcat(color_img_l, color_img_r, dark_temp);
-		cv::hconcat(image_left_bright, image_right_bright, bright_temp);
-		cv::vconcat(dark_temp, bright_temp, render_image_raw_);
-
+		cv::hconcat(image_left_bright, image_right_bright, render_image_raw_);
+		MergeRBGImage(image_rgb, dark_temp, render_image_calib_raw_);
 		float temperature = 0;
 		ret_code = DfGetDeviceTemperature(temperature);
 		std::cout << "temperature: " << temperature << std::endl;
@@ -1980,6 +2027,7 @@ void  CameraCaptureGui::do_pushButton_connect()
 			{
 				//必须连接相机成功后，才可获取相机分辨率
 				ret_code = DfGetCameraResolution(&camera_width_, &camera_height_);
+				ret_code = DfGetRGBCameraResolution(&rgb_camera_width_, &rgb_camera_height_);
 				std::cout << "Width: " << camera_width_ << "    Height: " << camera_height_ << std::endl;
 
 				//获取相机标定参数
@@ -2807,6 +2855,9 @@ void  CameraCaptureGui::do_pushButton_capture_one_frame()
 	case 4:
 		captureOneRawFrameAndRender();
 		break;
+	case 5:
+		captureOneRawFrameAndRender();
+		break;
 
 	default:
 		captureOneFrameAndRender();
@@ -2868,7 +2919,7 @@ void  CameraCaptureGui::do_timeout_capture_slot()
 		//{
 		//	capture_timer_.start();
 		//}
-		if (radio_button_flag_ == 4)
+		if (radio_button_flag_ == 4 || radio_button_flag_ == 5)
 		{
 			if (!capturing_flag_)
 			{
@@ -3077,6 +3128,16 @@ void CameraCaptureGui::do_QRadioButton_toggled_calibration(bool state)
 	}
 }
 
+void CameraCaptureGui::do_QRadioButton_toggled_bright_raw(bool state)
+{
+	if (state)
+	{
+		radio_button_flag_ = SELECT_BRIGHT_RAW_FLAG_;
+		//qDebug() << "state: " << radio_button_flag_;
+		showImage();
+	}
+}
+
 void CameraCaptureGui::do_QRadioButton_toggled_generate_brightness_default(bool state)
 {
 	if (state)
@@ -3136,6 +3197,11 @@ bool CameraCaptureGui::showImage()
 	case 4:
 	{
 		setImage(render_image_raw_);
+	}
+	break;
+	case 5:
+	{
+		setImage(render_image_calib_raw_);
 	}
 	break;
 

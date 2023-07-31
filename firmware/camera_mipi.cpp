@@ -203,7 +203,7 @@ bool CameraMIPI::openCamera()
     factoryThread_m = new FactoryThread();
     factoryThread_m->initialize();
     factoryThread_m->waitRunning();    
-    sleep(5);
+    sleep(3);
 
     capture_buf_m = -1;
     i_m = 0;
