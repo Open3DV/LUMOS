@@ -1424,7 +1424,7 @@ DF_SDK_API int DfGetFrame04(float* depth, int depth_buf_size,
 	assert(brightness_buf_size == image_size_ * sizeof(char) * 1);
 	assert(color_brightness_buf_size == rgb_image_size_);
 	assert(resize_color_brightness_buf_size == rgb_image_size_ * sizeof(unsigned char) / 4);
-	assert(resize_color_depth_buf_size == rgb_image_size_ * sizeof(float) / 4);
+	assert(resize_color_depth_buf_size == rgb_camera_height_ * rgb_camera_width_ * sizeof(float) / 4);
 	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
 	if (ret == DF_FAILED)
 	{
@@ -1515,9 +1515,8 @@ DF_SDK_API int DfGetFrame04HDR(float* depth, int depth_buf_size,
 	assert(depth_buf_size == image_size_ * sizeof(float) * 1);
 	assert(brightness_buf_size == image_size_ * sizeof(char) * 1);
 	assert(color_brightness_buf_size == rgb_image_size_);
-	assert(depth2color_buf_size == image_size_ * sizeof(unsigned short) * 2);
 	assert(resize_color_brightness_buf_size == rgb_image_size_ * sizeof(unsigned char) / 4);
-	assert(resize_color_depth_buf_size == rgb_image_size_ * sizeof(float) / 4);
+	assert(resize_color_depth_buf_size == rgb_camera_height_ * rgb_camera_width_ * sizeof(float) / 4);
 	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
 	if (ret == DF_FAILED)
 	{
