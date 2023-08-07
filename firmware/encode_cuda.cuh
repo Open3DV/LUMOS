@@ -57,6 +57,8 @@ __global__ void kernel_dispaty_to_xyz(int width, int height, float* d_in_Q, floa
 
 __global__ void kernel_dispaty_to_depth(int width, int height, float* d_in_Q, float* d_in_disparty, float* d_out_depth_map, unsigned char* disparty_mask);
 
+__global__ void kernel_dispaty_to_depth_and_color_map(int width, int height, int rgb_width, int rgb_height, float* d_in_Q, float* d_in_rgb_intrinsic, float* d_in_l2rgb_R, float* d_in_l2rgb_T,float* d_in_disparty, float* d_out_depth_map, ushort2* d_out_depth_color_map, unsigned char* disparty_mask);
+
 __global__ void kernel_depth_to_pointcloud(int width, int height, float* d_in_Q, float* d_in_depth_map, float* d_out_pointcloud_map);
 
 __global__ void kernel_remap(uchar* src, uchar* dst, short2* map1, ushort* map2, short4* weight, int width, int height);

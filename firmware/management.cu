@@ -13,6 +13,8 @@
 
 int h_image_width_ = 0;
 int h_image_height_ = 0;
+int h_rgb_image_width_ = 0;
+int h_rgb_image_height_ = 0;
 
 dim3 threadsPerBlock(16, 16);
 dim3 blocksPerGrid((d_image_width_ + threadsPerBlock.x - 1) / threadsPerBlock.x,
@@ -45,6 +47,58 @@ bool cuda_set_camera_resolution(int width, int height)
 
 	LOG(INFO) << "init d_image_width_: " << d_image_width_;
 	LOG(INFO) << "init d_image_height_: " << d_image_height_;
+	LOG(INFO) << "blocksPerGrid.x: " << blocksPerGrid.x;
+	LOG(INFO) << "blocksPerGrid.y: " << blocksPerGrid.y;
+
+	return true;
+}
+
+bool cuda_set_camera_resolution(int width, int height, int rgb_width, int rgb_height)
+{
+	h_image_width_ = width;
+	h_image_height_ = height;
+
+	d_image_width_ = width;
+	d_image_height_ = height;
+
+	h_rgb_image_width_ = rgb_width;
+	h_rgb_image_height_ = rgb_height;
+
+	d_rgb_image_width_ = rgb_width;
+	d_rgb_image_height_ = rgb_height;
+
+	cudaError_t error_code = cudaMemcpyToSymbol(d_image_width_, &width, sizeof(int));
+	if (error_code != cudaSuccess)
+	{
+		return false;
+	}
+
+	error_code = cudaMemcpyToSymbol(d_image_height_, &height, sizeof(int));
+	if (error_code != cudaSuccess)
+	{
+		return false;
+	}
+
+	error_code = cudaMemcpyToSymbol(d_rgb_image_width_, &rgb_width, sizeof(int));
+	if (error_code != cudaSuccess)
+	{
+		return false;
+	}
+
+	error_code = cudaMemcpyToSymbol(d_rgb_image_height_, &rgb_height, sizeof(int));
+	if (error_code != cudaSuccess)
+	{
+		return false;
+	}
+
+
+	blocksPerGrid.x = (width + threadsPerBlock.x - 1) / threadsPerBlock.x;
+	blocksPerGrid.y = (height + threadsPerBlock.y - 1) / threadsPerBlock.y;
+
+	LOG(INFO) << "init d_image_width_: " << d_image_width_;
+	LOG(INFO) << "init d_image_height_: " << d_image_height_;	
+	LOG(INFO) << "init d_rgb_image_width_: " << d_rgb_image_width_;
+	LOG(INFO) << "init d_rgb_image_height_: " << d_rgb_image_height_;
 	LOG(INFO) << "blocksPerGrid.x: " << blocksPerGrid.x;
 	LOG(INFO) << "blocksPerGrid.y: " << blocksPerGrid.y;
 
@@ -140,6 +194,11 @@ bool cuda_malloc_basic_memory()
 
 	cudaMalloc((void**)&d_Q, 16 * sizeof(float));
 
+	cudaMalloc((void**)&d_intrinsic_rgb, 3 * 3 * sizeof(float));
+	cudaMalloc((void**)&d_R_l2rgb, 3 * 3 * sizeof(float));
+	cudaMalloc((void**)&d_T_l2rgb, 3 * 1 * sizeof(float));
+	cudaMalloc((void**)&d_depth2rgb_map, d_image_height_ * d_image_width_ * sizeof(ushort2));
+
 	cudaMalloc((void**)&d_unwraped_pixels[0], d_image_height_ * d_image_width_ * sizeof(unsigned short));
 	cudaMalloc((void**)&d_unwraped_pixels[1], d_image_height_ * d_image_width_ * sizeof(unsigned short));
 
@@ -201,6 +260,12 @@ bool cuda_free_basic_memory()
 	cudaFree(d_threshold_map_[0]);
 	cudaFree(d_gray_to_bin_decode_map_);
 	cudaFree(d_Q);
+
+	cudaFree(d_intrinsic_rgb);
+	cudaFree(d_R_l2rgb);
+	cudaFree(d_T_l2rgb);
+	cudaFree(d_depth2rgb_map);
+
 	cudaFree(d_phase_map_[0]);
 
 	cudaFree(d_unwraped_pixels[0]);
@@ -349,6 +414,13 @@ bool cuda_copy_Q_map_to_memory(float* Q_map)
 	CHECK(cudaMemcpyAsync(d_Q, Q_map, 16 * sizeof(float), cudaMemcpyHostToDevice));
 }
 
+bool cuda_copy_rgb_transform_to_memory(float* input_rgb_camera_intrinsic, float* input_l2rgb_R, float* input_l2rgb_T)
+{
+	CHECK(cudaMemcpyAsync(d_intrinsic_rgb, input_rgb_camera_intrinsic, 3 * 3 * sizeof(float), cudaMemcpyHostToDevice));
+	CHECK(cudaMemcpyAsync(d_R_l2rgb, input_l2rgb_R, 3 * 3 * sizeof(float), cudaMemcpyHostToDevice));
+	CHECK(cudaMemcpyAsync(d_T_l2rgb, input_l2rgb_T, 3 * 1 * sizeof(float), cudaMemcpyHostToDevice));
+}
+
 void cuda_copy_depth_from_memory(float* depth)
 {
 	CHECK(cudaMemcpy(depth, d_depth_map_, d_image_height_ * d_image_width_ * sizeof(float), cudaMemcpyDeviceToHost));
@@ -409,6 +481,11 @@ void cuda_copy_code_sorted_index_from_memory(unsigned short* code_sorted_index)
 void cuda_copy_disparty_from_memory(float* disparty)
 {
 	CHECK(cudaMemcpy(disparty, d_disparty_map_, d_image_height_ * h_image_width_ * sizeof(float), cudaMemcpyDeviceToHost));
+}
+
+void cuda_copy_depth2rgb_map_from_memory(ushort2* output_depth2rgb_map)
+{
+	CHECK(cudaMemcpy(output_depth2rgb_map, d_depth2rgb_map, d_image_height_ * d_image_width_ * sizeof(ushort2), cudaMemcpyDeviceToHost));
 }
 
 /********************************************************************/
@@ -749,6 +826,12 @@ bool cuda_disp_to_depth(int serial_flag)
 	return true;
 }
 
+bool cuda_disp_to_depth_and_color_map(int serial_flag)
+{
+	kernel_dispaty_to_depth_and_color_map << <blocksPerGrid, threadsPerBlock >> > (d_image_width_, d_image_height_, d_rgb_image_width_, d_rgb_image_height_, d_Q, d_intrinsic_rgb, d_R_l2rgb, d_T_l2rgb, d_disparty_map_, d_depth_map_, d_depth2rgb_map, d_disp_mask_map_);
+	return true;
+}
+
 void depth_filter(float depth_threshold_val)
 {
 	dim3 threadsPerBlock_p(4, 8);
@@ -1068,4 +1151,13 @@ bool cuda_get_camera_gamma(float& gamma)
 	}
 	LOG(INFO) << "d_camera_gamma_: " << d_camera_gamma_;
 	return true;
+}
+
+bool cuda_gnerate_depth2rgb_color_map()
+{
+	// 核函数运行之后得到depth2rgb_map
+	// 函数输入：三通道点云
+	// 重载depth的生成函数，增加这个map的输出
+	// 就没有必要重新从depth得到点云
+
 }

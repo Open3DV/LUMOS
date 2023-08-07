@@ -23,6 +23,8 @@
 
 __device__ int d_image_width_ = 0;
 __device__ int d_image_height_ = 0;
+__device__ int d_rgb_image_width_ = 0;
+__device__ int d_rgb_image_height_ = 0;
 
 __device__ float d_confidence_ = 100;
 __device__ float d_confidence_t = 100;
@@ -58,6 +60,12 @@ __device__ unsigned char* d_noise_mask_map_[2];
 __device__ unsigned char* d_disp_mask_map_;
 __device__ unsigned char* d_gray_to_bin_decode_map_;
 __device__ float* d_Q;
+
+__device__ float* d_intrinsic_rgb;
+__device__ float* d_R_l2rgb;
+__device__ float* d_T_l2rgb;
+__device__ ushort2* d_depth2rgb_map;
+
 __device__ unsigned char* d_phase_map_[2];
 __device__ unsigned char* d_code_map_[2];
 
@@ -99,6 +107,8 @@ __device__ short4* d_weight_map;
 //分配basic内存
 bool cuda_set_camera_resolution(int width, int height);
 
+bool cuda_set_camera_resolution(int width, int height, int rgb_width, int rgb_height);
+
 bool cuda_malloc_basic_memory();
 
 bool cuda_free_basic_memory();
@@ -121,6 +131,7 @@ bool cuda_copy_remap_maps_to_memory(short2* remap_xy_map_l, short2* remap_xy_map
 
 bool cuda_copy_Q_map_to_memory(float* Q_map);
 
+bool cuda_copy_rgb_transform_to_memory(float* input_rgb_camera_intrinsic, float* input_l2rgb_R, float* input_l2rgb_T);
 
 //void cuda_copy_pointcloud_from_memory(float* pointcloud);
 
@@ -146,7 +157,7 @@ void cuda_copy_code_sorted_index_from_memory(unsigned short* code_sorted_index);
 
 void cuda_copy_disparty_from_memory(float* disparty);
 
-
+void cuda_copy_depth2rgb_map_from_memory(ushort2* output_depth2rgb_map);
 
 
 
@@ -185,6 +196,8 @@ bool cuda_pixels_shear_by_monotonicity(int serial_flag);//遍历unwrap之后的�
 bool cuda_matching(int serial_flag);// 排除对于0的matching
 
 bool cuda_disp_to_depth(int serial_flag);
+
+bool cuda_disp_to_depth_and_color_map(int serial_flag);
 
 void depth_filter(float depth_threshold_val);
 

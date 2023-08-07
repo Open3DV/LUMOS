@@ -87,9 +87,36 @@ bool FactoryThread::threadExecute()
     if (!iEglStreamSettings)
         ORIGINATE_ERROR("Failed to get IEGLOutputStreamSettings interface");
 
-    iEglStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_420_888);
+    iEglStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_444_888);
 
-    iEglStreamSettings->setResolution(PREVIEW_SIZE);
+    /********获取sensor分辨率**********/
+    ISensorMode *iSensorMode;
+    std::vector<SensorMode*> sensorModes;
+
+    iCameraProperties->getBasicSensorModes(&sensorModes);
+    if (sensorModes.size() == 0)
+        ORIGINATE_ERROR("Failed to get sensor modes");
+
+    PRODUCER_PRINT("Available Sensor modes :\n");
+
+    int max_resolution_area = 0;
+    int SENSOR_MODE = 0;
+
+    for (uint32_t i = 0; i < sensorModes.size(); i++) {
+        iSensorMode = interface_cast<ISensorMode>(sensorModes[i]);
+        Size2D<uint32_t> resolution = iSensorMode->getResolution();
+        PRODUCER_PRINT("[%u] W=%u H=%u\n", i, resolution.width(), resolution.height());
+        if (resolution.width() * resolution.height() > max_resolution_area)
+        {
+            max_resolution_area = resolution.width() * resolution.height();
+            SENSOR_MODE = i;
+            image_width_m = resolution.width();
+            image_height_m = resolution.height();
+        }
+    }
+    /********获取sensor分辨率**********/
+
+    iEglStreamSettings->setResolution(Size2D<uint32_t>(image_width_m, image_height_m));
 
     UniqueObj<OutputStream> previewStream(iCaptureSession->createOutputStream(streamSettings.get()));
     outstream_ptr_m = previewStream.get();
@@ -109,26 +136,6 @@ bool FactoryThread::threadExecute()
 
     iRequest->enableOutputStream(previewStream.get());
 
-    ISensorMode *iSensorMode;
-    std::vector<SensorMode*> sensorModes;
-
-    iCameraProperties->getBasicSensorModes(&sensorModes);
-    if (sensorModes.size() == 0)
-        ORIGINATE_ERROR("Failed to get sensor modes");
-
-    PRODUCER_PRINT("Available Sensor modes :\n");
-
-    for (uint32_t i = 0; i < sensorModes.size(); i++) {
-        iSensorMode = interface_cast<ISensorMode>(sensorModes[i]);
-        Size2D<uint32_t> resolution = iSensorMode->getResolution();
-        PRODUCER_PRINT("[%u] W=%u H=%u\n", i, resolution.width(), resolution.height());
-        if (i == SENSOR_MODE)
-        {
-            image_width_m = resolution.width();
-            image_height_m = resolution.height();
-        }
-    }
-
     ISourceSettings *iSourceSettings = interface_cast<ISourceSettings>(iRequest->getSourceSettings());
     if (!iSourceSettings)
         ORIGINATE_ERROR("Failed to get ISourceSettings interface");
@@ -136,6 +143,7 @@ bool FactoryThread::threadExecute()
     if (SENSOR_MODE >= sensorModes.size())
         ORIGINATE_ERROR("Sensor mode index is out of range");
 
+    std::cout << "SENSOR_MODE: " << SENSOR_MODE << std::endl;
     SensorMode *sensorMode = sensorModes[SENSOR_MODE];
 
     iSensorMode = interface_cast<ISensorMode>(sensorMode);

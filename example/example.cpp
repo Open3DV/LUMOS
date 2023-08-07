@@ -29,14 +29,24 @@ int main()
 	char* ip = pBaseinfo[0].ip; 
 	 
 	//连接相机 
-	ret_code = DfConnect("192.168.4.59");
+	ret_code = DfConnect("192.168.3.28");
 
 	int width = 0, height = 0; 
+
+	int channels = 0;
+
 	if (0 == ret_code)
 	{
+		//连接相机后要调用 DfSelectCamera() 先行选择所需的相机坐标系
+		DfSelectCamera(LumosCameraSelect::RGBCamera);
+
 		//必须连接相机成功后，才可获取相机分辨率
 		ret_code = DfGetCameraResolution(&width, &height);
 		std::cout << "Width: " << width << "    Height: " << height << std::endl;
+
+		// 获取图像通道数
+
+		ret_code = DfGetCameraChannels(&channels);
 	}
 	else
 	{
@@ -99,8 +109,8 @@ int main()
 	char* timestamp_data = (char*)malloc(sizeof(char) * 30);
 	memset(timestamp_data, 0, sizeof(char) * 30);
 
-	unsigned char* brightness_data = (unsigned char*)malloc(sizeof(unsigned char) * width * height);
-	memset(brightness_data, 0, sizeof(unsigned char) * width * height);
+	unsigned char* brightness_data = (unsigned char*)malloc(sizeof(unsigned char) * width * height * channels);
+	memset(brightness_data, 0, sizeof(unsigned char) * width * height * channels);
 
 	int capture_num = 0;
 
@@ -233,7 +243,7 @@ int main()
 	free(timestamp_data); 
 	free(pBaseinfo);
 
-	DfDisconnect("192.168.4.52");
+	DfDisconnect("192.168.3.28");
 }
 
 

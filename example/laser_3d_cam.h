@@ -29,12 +29,39 @@ extern "C"
 
 	};
 
+	enum class LumosCameraSelect
+	{
+		GrayCamera = 0,
+		RGBCamera = 1,
+	};
+
 	//函数名： DfConnect
 	//功能： 连接相机
 	//输入参数： camera_id（相机ip地址）
 	//输出参数： 无
 	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
 	DF_SDK_API int DfConnect(const char* camera_id);
+
+	//函数名： DfSelectCamera
+	//功能： 设置拍摄所用的相机，采集时，会根据选择的相机返回对于应拍照数据（分辨率、内参、通道数、亮度图、深度图）
+	//输入参数：camera_select(GrayCamera：左目灰色相机、RGBCamera：中间彩色相机)
+	//输出参数：  
+	//返回值： 类型（int）:返回0表示设置参数成功;返回-1表示设置参数失败。
+	DF_SDK_API int DfSelectCamera(LumosCameraSelect camera_select);
+
+	//函数名： DfGetSelectedCamera
+	//功能： 获取选择的拍摄相机
+	//输入参数：
+	//输出参数：camera_select(GrayCamera：左目灰色相机、RGBCamera：中间彩色相机)
+	//返回值： 类型（int）:返回0表示获取参数成功;返回-1表示获取参数失败。
+	DF_SDK_API int DfGetSelectedCamera(LumosCameraSelect& camera_select);
+
+	//函数名： DfGetCameraChannels
+	//功能： 获取相机图像通道数
+	//输入参数： 无
+	//输出参数： channels(通道数)
+	//返回值： 类型（int）:返回0表示获取参数成功;返回-1表示获取参数失败.
+	DF_SDK_API int  DfGetCameraChannels(int* channels);
 
 	//函数名： DfGetCameraResolution
 	//功能： 获取相机分辨率

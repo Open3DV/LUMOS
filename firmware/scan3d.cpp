@@ -168,6 +168,8 @@ int Scan3D::init()
     buff_brightness_ = new unsigned char[image_width_*image_height_];
     buff_depth_ = new float[image_width_*image_height_];
     buff_pointcloud_ = new float[3*image_width_*image_height_];
+    buff_color_brightness_ = new unsigned char[3*rgb_image_width_*rgb_image_height_];
+    buff_depth_color_map_ = new unsigned short[2*image_width_*image_height_];
  
 
     if(0 == image_width_ && 0 == image_height_)
@@ -175,7 +177,7 @@ int Scan3D::init()
         return false;
     }
     /******************************GPU init****************************/
-    cuda_set_camera_resolution(image_width_, image_height_);
+    cuda_set_camera_resolution(image_width_, image_height_, rgb_image_width_, rgb_image_height_);
     cuda_malloc_basic_memory();
 
     /****************************gray to bin map***********************/
@@ -253,11 +255,21 @@ int Scan3D::init()
 
 	cv::Mat distCoeffR(1, 5, CV_64F);
 
+    cv::Mat cameraMatrixRGB(3, 3, CV_64F);
+
+	cv::Mat distCoeffRGB(1, 5, CV_64F);
+
 	cv::Mat T(3, 1, CV_64F);
 
 	cv::Mat RR(3, 3, CV_64F);
 
-    if (!read_calib_param_from_file("./calib_param.xml", (double*)cameraMatrixL.data, (double*)cameraMatrixR.data, (double*)distCoeffL.data, (double*)distCoeffR.data, (double*)RR.data, (double*)T.data))
+    cv::Mat T_RGB(3, 1, CV_64F);
+
+	cv::Mat R_RGB(3, 3, CV_64F);
+
+    if (!read_calib_param_from_file("./calib_param.xml", (double*)cameraMatrixL.data, (double*)cameraMatrixR.data, 
+        (double*)cameraMatrixRGB.data, (double*)distCoeffL.data, (double*)distCoeffR.data, (double*)distCoeffRGB.data, 
+            (double*)RR.data, (double*)R_RGB.data, (double*)T.data, (double*)T_RGB.data))
     {
         LOG(ERROR) << "failed to read calib_param.xml ";
         return false;
@@ -268,7 +280,8 @@ int Scan3D::init()
 	cv::Mat mapL1, mapL2, mapR1, mapR2;
     cv::Mat weight_map;
 
-    cv::stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, cv::Size(image_width_, image_height_), RR, T, Rl, Rr, Pl, Pr, Q, /*cv::CALIB_ZERO_DISPARITY*/0, 0, cv::Size(image_width_, image_height_), &roi1, &roi2);
+    cv::stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, cv::Size(image_width_, image_height_), RR, 
+        T, Rl, Rr, Pl, Pr, Q, /*cv::CALIB_ZERO_DISPARITY*/0, 0, cv::Size(image_width_, image_height_), &roi1, &roi2);
 
     cv::initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pl, cv::Size(image_width_, image_height_), CV_16SC2, mapL1, mapL2);
 	cv::initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, cv::Size(image_width_, image_height_), CV_16SC2, mapR1, mapR2);
@@ -289,10 +302,26 @@ int Scan3D::init()
 
         LOG(INFO) << "weight_map.size(): " << weight_map.size();
 
-        cuda_copy_remap_maps_to_memory((short2*)mapL1.data, (short2*)mapR1.data, (unsigned short*)mapL2.data, (unsigned short*)mapR2.data, (short4*)weight_map.data);
+        cuda_copy_remap_maps_to_memory((short2*)mapL1.data, (short2*)mapR1.data, (unsigned short*)mapL2.data, 
+            (unsigned short*)mapR2.data, (short4*)weight_map.data);
     }
 
     Q.convertTo(Q, CV_32F);
+
+    /*********************************上传标定参数***************************/
+    cameraMatrixRGB.convertTo(cameraMatrixRGB, CV_32F);
+    R_RGB.convertTo(R_RGB, CV_32F);
+    T_RGB.convertTo(T_RGB, CV_32F);
+
+    LOG(INFO) << "cameraMatrixRGB" << cameraMatrixRGB;
+    LOG(INFO) << "R_RGB" << R_RGB;
+    LOG(INFO) << "T_RGB" << T_RGB;
+
+    Rl.convertTo(Rl, CV_32F);
+    R_RGB = R_RGB * Rl.inv();
+    R_RGB.convertTo(R_RGB, CV_32F);
+
+    cuda_copy_rgb_transform_to_memory((float*)cameraMatrixRGB.data, (float*)R_RGB.data, (float*)T_RGB.data);
 
     LOG(INFO) << "Q: " << Q;
 
@@ -307,17 +336,30 @@ int Scan3D::init()
     calib_param_user_.camera_intrinsic[5] = -Q.at<float>(1, 3);
     calib_param_user_.camera_intrinsic[8] = 1;
 
-    calib_param_user_.projector_intrinsic[0] = Q.at<float>(2, 3);
-    calib_param_user_.projector_intrinsic[4] = Q.at<float>(2, 3);
-    calib_param_user_.projector_intrinsic[2] = Q.at<float>(3, 3) / Q.at<float>(3, 2) - Q.at<float>(0, 3);//
-    calib_param_user_.projector_intrinsic[5] = -Q.at<float>(1, 3);
-    calib_param_user_.projector_intrinsic[8] = 1;
+    cameraMatrixRGB.convertTo(cameraMatrixRGB, CV_32F);
+    distCoeffRGB.convertTo(distCoeffRGB, CV_32F);
 
-    calib_param_user_.translation_matrix[0] = sqrt(T.at<double>(0, 0) * T.at<double>(0, 0) + T.at<double>(1, 0) * T.at<double>(1, 0) + T.at<double>(2, 0) * T.at<double>(2, 0));
+    calib_param_user_.rgb_camera_intrinsic[0] = cameraMatrixRGB.at<float>(0, 0);
+    calib_param_user_.rgb_camera_intrinsic[4] = cameraMatrixRGB.at<float>(1, 1);
+    calib_param_user_.rgb_camera_intrinsic[2] = cameraMatrixRGB.at<float>(0, 2);//
+    calib_param_user_.rgb_camera_intrinsic[5] = cameraMatrixRGB.at<float>(1, 2);
+    calib_param_user_.rgb_camera_intrinsic[8] = 1;
 
-    calib_param_user_.rotation_matrix[0] = 1;
-    calib_param_user_.rotation_matrix[4] = 1;
-    calib_param_user_.rotation_matrix[8] = 1;
+    calib_param_user_.rgb_camera_distortion[0] = distCoeffRGB.at<float>(0, 0);
+    calib_param_user_.rgb_camera_distortion[1] = distCoeffRGB.at<float>(0, 1);
+    calib_param_user_.rgb_camera_distortion[2] = distCoeffRGB.at<float>(0, 2);
+    calib_param_user_.rgb_camera_distortion[3] = distCoeffRGB.at<float>(0, 3);
+    calib_param_user_.rgb_camera_distortion[4] = distCoeffRGB.at<float>(0, 4);
+
+    calib_param_user_.translation_matrix[0] = T_RGB.at<float>(0, 0);
+    calib_param_user_.translation_matrix[1] = T_RGB.at<float>(1, 0);
+    calib_param_user_.translation_matrix[2] = T_RGB.at<float>(2, 0);
+
+    float *R_RGB_ptr = R_RGB.ptr<float>(0, 0);
+    for (int i = 0; i < 9; i += 1)
+    {
+        calib_param_user_.rotation_matrix[i] = R_RGB_ptr[i];
+    }
 
     writeCalibParamUser();
 
@@ -357,6 +399,7 @@ bool Scan3D::cameraIsValid()
 }
 
 bool Scan3D::setParamConfidence(float confidence)
+
 {
     return cuda_set_param_confidence(confidence);  
 }
@@ -799,6 +842,7 @@ bool Scan3D::captureRaw03(unsigned char* buff)
     if (camera_rgb_->streamOn())
     {
         camera_rgb_->grap(buff + (28 * img_size));
+        camera_rgb_->grap(buff + (28 * img_size));
         camera_rgb_->streamOff();
     }
 
@@ -1073,6 +1117,204 @@ int Scan3D::captureFrame01()
     return DF_SUCCESS;
 }
 
+int Scan3D::captureFrame04()
+{
+    projector_->setProjectorExposure(camera_exposure_);
+    LOG(INFO) << "start init basic memory";
+    cuda_init_basic_memory();
+    LOG(INFO) << "finish init basic memory";
+
+    LOG(INFO) << "Stream On:";
+    if (!camera_left_->streamOn())
+    {
+        LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
+        return DF_ERROR_CAMERA_STREAM;
+    }
+    if (!camera_right_->streamOn())
+    {
+        LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
+        return DF_ERROR_CAMERA_STREAM;
+    }
+
+    /****************************cudaStreamCreate***********************/
+
+    cudaError_t result_e;
+    cudaStream_t stream1_, stream2_, stream3_, stream4_;
+    result_e = cudaStreamCreate(&stream1_);
+    result_e = cudaStreamCreate(&stream2_);
+    result_e = cudaStreamCreate(&stream3_);
+    result_e = cudaStreamCreate(&stream4_);
+    
+    LOG(INFO) << "projector start";
+    projector_->project();
+
+    LOG(INFO) << "grap start";
+    // for (int i = 0; i < 12; i += 1)
+    // {
+    //     if (!camera_left_->grap(host_img_left_[i]) || !camera_right_->grap(host_img_right_[i]))
+    //     {
+    //         camera_left_->streamOff();
+    //         camera_right_->streamOff();
+            
+    //         result_e = cudaStreamDestroy(stream1_);
+    //         result_e = cudaStreamDestroy(stream2_);
+    //         result_e = cudaStreamDestroy(stream3_);
+    //         result_e = cudaStreamDestroy(stream4_);
+            
+    //         return DF_ERROR_CAMERA_GRAP;
+    //     }
+    // }
+
+    for (int j = 0; j < 14; j += 1)
+    {
+
+        int i = 0;
+        if (j < 8)
+        {
+            i = j + 6;
+        }
+        else
+        {
+            i = j - 8;
+        }
+
+        LOG(INFO) << "grap " << i << " image:"; 
+
+        if (!camera_left_->grap(host_img_left_[i]) || !camera_right_->grap(host_img_right_[i]))
+        {
+            camera_left_->streamOff();
+            camera_right_->streamOff();
+            
+            result_e = cudaStreamDestroy(stream1_);
+            result_e = cudaStreamDestroy(stream2_);
+            result_e = cudaStreamDestroy(stream3_);
+            result_e = cudaStreamDestroy(stream4_);
+            
+            return DF_ERROR_CAMERA_GRAP;
+        }
+
+        LOG(INFO) << "finished!";
+
+        cudaStream_t streamNowLeft = i % 2 == 0 ? stream1_ : stream2_;
+        cudaStream_t streamNowRight = i % 2 == 0 ? stream3_ : stream4_;
+
+        if (i < 4)
+        {
+            streamNowLeft = stream2_;
+            streamNowRight = stream4_;
+        }
+        streamNowRight = streamNowLeft;
+
+        cuda_copy_pattern_to_memory(host_img_left_[i], i, streamNowLeft);
+        cuda_copy_pattern_to_memory(host_img_right_[i], i + MAX_PATTERNS_NUMBER, streamNowRight);
+    }
+
+    cudaDeviceSynchronize();
+    for (int i = 0; i < 14; i += 1)
+    {
+        cudaDeviceSynchronize();
+        LOG(INFO) << "grap " << i << " image:"; 
+        LOG(INFO) << "finished!";
+
+        cudaStream_t streamNowLeft = i % 2 == 0 ? stream1_ : stream2_;
+        cudaStream_t streamNowRight = i % 2 == 0 ? stream3_ : stream4_;
+
+        if (i < 4)
+        {
+            streamNowLeft = stream2_;
+            streamNowRight = stream4_;
+        }
+        streamNowRight = streamNowLeft;
+
+        if (i == 3)
+        {
+            // 计算四步相移
+            cuda_four_step_phase_shift_16bit(streamNowLeft, streamNowRight);
+            continue;
+        }
+
+        if (i == 5)
+        {
+            // 计算threshold
+            cuda_decode_gray_code_one_by_one_16bit(-1, streamNowLeft, streamNowRight);
+            continue;
+        }
+
+        if (i > 5)
+        {
+            // 格雷码的移位解码
+            cuda_decode_gray_code_one_by_one_16bit(i - 6, streamNowLeft, streamNowRight);
+            if (i == 13)
+            {
+                cuda_code_phase_rectify(streamNowLeft, streamNowRight);
+            }
+            continue;
+        }
+    }
+    
+    camera_left_->streamOff();
+    camera_right_->streamOff();
+
+    if (!camera_rgb_->streamOn())
+    {
+        LOG(INFO) << "rgb camera stream on error! ";
+        camera_rgb_->streamOff();
+    }
+    else
+    {
+        camera_rgb_->grap(buff_color_brightness_);
+        camera_rgb_->grap(buff_color_brightness_);
+        camera_rgb_->streamOff();
+    }
+    cudaDeviceSynchronize();
+
+    LOG(INFO) << "grap end";
+
+    LOG(INFO) << "sort start";
+
+    cuda_code_phase_unwrap(0);//展开
+
+    cuda_fix_four_step_code_shift(0);
+
+    cuda_code_statistics(0);
+    cuda_code_statistics_to_index(0);
+    cuda_pixels_sort_by_code(0);
+    cuda_code_statistics_to_index(0);
+    cuda_pixels_shear_by_monotonicity(0);
+    cuda_matching(0);
+    cuda_disp_to_depth(0);
+
+    cudaDeviceSynchronize();
+
+    LOG(INFO) << "sort end";
+
+
+
+    LOG(INFO) << "Stream Off";
+    
+    removeOutlierBaseDepthFilter();
+    removeOutlierBaseRadiusFilter();
+    //if (1 != generate_brightness_model_)
+    //{
+    //    captureTextureImage(generate_brightness_model_, generate_brightness_exposure_,buff_brightness_);
+    //}
+
+
+    cuda_copy_depth_from_memory(buff_depth_);
+    cuda_copy_brightness_from_memory(buff_brightness_);
+
+    result_e = cudaStreamDestroy(stream1_);
+    result_e = cudaStreamDestroy(stream2_);
+    result_e = cudaStreamDestroy(stream3_);
+    result_e = cudaStreamDestroy(stream4_);
+
+    return DF_SUCCESS;
+}
+
 int Scan3D::captureFrame02()
 {
     LOG(INFO) << "start init basic memory";
@@ -1264,6 +1506,205 @@ int Scan3D::captureFrame02()
 
     delete[] test_left;
     delete[] test_right;
+
+    return DF_SUCCESS;
+}
+
+int Scan3D::captureFrame03()
+{
+    projector_->setProjectorExposure(camera_exposure_);
+    LOG(INFO) << "start init basic memory";
+    cuda_init_basic_memory();
+    LOG(INFO) << "finish init basic memory";
+
+    LOG(INFO) << "Stream On:";
+    if (!camera_left_->streamOn())
+    {
+        LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
+        return DF_ERROR_CAMERA_STREAM;
+    }
+    if (!camera_right_->streamOn())
+    {
+        LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
+        return DF_ERROR_CAMERA_STREAM;
+    }
+
+    /****************************cudaStreamCreate***********************/
+
+    cudaError_t result_e;
+    cudaStream_t stream1_, stream2_, stream3_, stream4_;
+    result_e = cudaStreamCreate(&stream1_);
+    result_e = cudaStreamCreate(&stream2_);
+    result_e = cudaStreamCreate(&stream3_);
+    result_e = cudaStreamCreate(&stream4_);
+    
+    LOG(INFO) << "projector start";
+    projector_->project();
+
+    LOG(INFO) << "grap start";
+    // for (int i = 0; i < 12; i += 1)
+    // {
+    //     if (!camera_left_->grap(host_img_left_[i]) || !camera_right_->grap(host_img_right_[i]))
+    //     {
+    //         camera_left_->streamOff();
+    //         camera_right_->streamOff();
+            
+    //         result_e = cudaStreamDestroy(stream1_);
+    //         result_e = cudaStreamDestroy(stream2_);
+    //         result_e = cudaStreamDestroy(stream3_);
+    //         result_e = cudaStreamDestroy(stream4_);
+            
+    //         return DF_ERROR_CAMERA_GRAP;
+    //     }
+    // }
+
+    for (int j = 0; j < 14; j += 1)
+    {
+
+        int i = 0;
+        if (j < 8)
+        {
+            i = j + 6;
+        }
+        else
+        {
+            i = j - 8;
+        }
+
+        LOG(INFO) << "grap " << i << " image:"; 
+
+        if (!camera_left_->grap(host_img_left_[i]) || !camera_right_->grap(host_img_right_[i]))
+        {
+            camera_left_->streamOff();
+            camera_right_->streamOff();
+            
+            result_e = cudaStreamDestroy(stream1_);
+            result_e = cudaStreamDestroy(stream2_);
+            result_e = cudaStreamDestroy(stream3_);
+            result_e = cudaStreamDestroy(stream4_);
+            
+            return DF_ERROR_CAMERA_GRAP;
+        }
+
+        LOG(INFO) << "finished!";
+
+        cudaStream_t streamNowLeft = i % 2 == 0 ? stream1_ : stream2_;
+        cudaStream_t streamNowRight = i % 2 == 0 ? stream3_ : stream4_;
+
+        if (i < 4)
+        {
+            streamNowLeft = stream2_;
+            streamNowRight = stream4_;
+        }
+        streamNowRight = streamNowLeft;
+
+        cuda_copy_pattern_to_memory(host_img_left_[i], i, streamNowLeft);
+        cuda_copy_pattern_to_memory(host_img_right_[i], i + MAX_PATTERNS_NUMBER, streamNowRight);
+    }
+
+    cudaDeviceSynchronize();
+    for (int i = 0; i < 14; i += 1)
+    {
+        cudaDeviceSynchronize();
+        LOG(INFO) << "grap " << i << " image:"; 
+        LOG(INFO) << "finished!";
+
+        cudaStream_t streamNowLeft = i % 2 == 0 ? stream1_ : stream2_;
+        cudaStream_t streamNowRight = i % 2 == 0 ? stream3_ : stream4_;
+
+        if (i < 4)
+        {
+            streamNowLeft = stream2_;
+            streamNowRight = stream4_;
+        }
+        streamNowRight = streamNowLeft;
+
+        if (i == 3)
+        {
+            // 计算四步相移
+            cuda_four_step_phase_shift_16bit(streamNowLeft, streamNowRight);
+            continue;
+        }
+
+        if (i == 5)
+        {
+            // 计算threshold
+            cuda_decode_gray_code_one_by_one_16bit(-1, streamNowLeft, streamNowRight);
+            continue;
+        }
+
+        if (i > 5)
+        {
+            // 格雷码的移位解码
+            cuda_decode_gray_code_one_by_one_16bit(i - 6, streamNowLeft, streamNowRight);
+            if (i == 13)
+            {
+                cuda_code_phase_rectify(streamNowLeft, streamNowRight);
+            }
+            continue;
+        }
+    }
+    
+    camera_left_->streamOff();
+    camera_right_->streamOff();
+
+    if (!camera_rgb_->streamOn())
+    {
+        LOG(INFO) << "rgb camera stream on error! ";
+        camera_rgb_->streamOff();
+    }
+    else
+    {
+        camera_rgb_->grap(buff_color_brightness_);
+        camera_rgb_->grap(buff_color_brightness_);
+        camera_rgb_->streamOff();
+    }
+    
+    cudaDeviceSynchronize();
+
+    LOG(INFO) << "grap end";
+
+    LOG(INFO) << "sort start";
+
+    cuda_code_phase_unwrap(0);//展开
+
+    cuda_fix_four_step_code_shift(0);
+
+    cuda_code_statistics(0);
+    cuda_code_statistics_to_index(0);
+    cuda_pixels_sort_by_code(0);
+    cuda_code_statistics_to_index(0);
+    cuda_pixels_shear_by_monotonicity(0);
+    cuda_matching(0);
+    cuda_disp_to_depth_and_color_map(0);
+
+    cudaDeviceSynchronize();
+
+    LOG(INFO) << "sort end";
+
+
+
+    LOG(INFO) << "Stream Off";
+    
+    removeOutlierBaseDepthFilter();
+    removeOutlierBaseRadiusFilter();
+    //if (1 != generate_brightness_model_)
+    //{
+    //    captureTextureImage(generate_brightness_model_, generate_brightness_exposure_,buff_brightness_);
+    //}
+
+    cuda_copy_depth2rgb_map_from_memory((ushort2*)buff_depth_color_map_);
+    cuda_copy_depth_from_memory(buff_depth_);
+    cuda_copy_brightness_from_memory(buff_brightness_);
+
+    result_e = cudaStreamDestroy(stream1_);
+    result_e = cudaStreamDestroy(stream2_);
+    result_e = cudaStreamDestroy(stream3_);
+    result_e = cudaStreamDestroy(stream4_);
 
     return DF_SUCCESS;
 }
@@ -1497,7 +1938,7 @@ int Scan3D::captureFrame01MixedHDR()
         ret = captureFrame01();
         if (DF_SUCCESS != ret)
         {
-            LOG(ERROR) << "captureFrame04BaseConfidence code: " << ret;
+            LOG(ERROR) << "captureFrame01 code: " << ret;
             frame_status = ret;
 
             setParamExposure(camera_exposure_before);
@@ -1522,6 +1963,58 @@ int Scan3D::captureFrame01MixedHDR()
     return DF_SUCCESS;
 }
 
+int Scan3D::captureFrame04MixedHDR()
+{
+    int frame_status = DF_SUCCESS;
+
+    int laser_current_before = laser_current_;
+    int camera_exposure_before = camera_exposure_;
+
+    int hdr_count;
+    int exposure_time[5];
+    int brightness[5];
+
+    read_hdr_param_from_file("./HDR_params.xml", hdr_count, exposure_time, brightness);
+
+    if (hdr_count < 1)
+    {
+        return DF_FAILED;
+    }
+
+    LOG(INFO) << "grap start";
+
+    for (int i = 0; i < hdr_count; i += 1)
+    {
+        int ret = setParamExposure(camera_exposure_list_[i]);
+        LOG(INFO) << "camera exposure:" << camera_exposure_list_[i];
+        laser_current_ = laser_current_list_[i];
+        ret = captureFrame04();
+        if (DF_SUCCESS != ret)
+        {
+            LOG(ERROR) << "captureFrame04 code: " << ret;
+            frame_status = ret;
+
+            setParamExposure(camera_exposure_before);
+            laser_current_ = laser_current_before;
+
+            return ret;
+        }
+        // gpu中拷贝数据
+        cuda_copy_result_to_hdr(i,5);
+    }
+    
+    cuda_merge_hdr_data(hdr_num_, buff_depth_, buff_brightness_);  
+
+    setParamExposure(camera_exposure_before);
+    laser_current_ = laser_current_before;
+
+    LOG(INFO) << "start init basic memory";
+    cuda_init_basic_memory_hdr();
+
+    LOG(INFO) << "finish init basic memory";
+
+    return DF_SUCCESS;
+}
 
 bool Scan3D::setParamHdr(int num,std::vector<int> led_list,std::vector<int> exposure_list)
 {
@@ -1747,6 +2240,11 @@ void Scan3D::copyBrightnessData(unsigned char* &ptr)
 	memcpy(ptr, buff_brightness_, sizeof(unsigned char)*image_height_*image_width_); 
 }
 
+void Scan3D::copyColorBrightnessData(unsigned char* &ptr)
+{ 
+	memcpy(ptr, buff_color_brightness_, sizeof(unsigned char)*rgb_image_height_*rgb_image_width_*3); 
+}
+
 void Scan3D::copyDepthData(float* &ptr)
 { 
 	memcpy(ptr, buff_depth_, sizeof(float)*image_height_*image_width_);
@@ -1755,6 +2253,11 @@ void Scan3D::copyDepthData(float* &ptr)
 void Scan3D::copyPointcloudData(float* &ptr)
 { 
     // reconstruct_copy_pointcloud_from_cuda_memory(ptr);
+}
+
+void Scan3D::copyDepth2ColorData(unsigned short* &ptr)
+{
+    memcpy(ptr, buff_depth_color_map_, 2*sizeof(unsigned short)*image_height_*image_width_);
 }
 
 void Scan3D::getCameraResolution(int &width, int &height)
@@ -1866,6 +2369,42 @@ bool Scan3D::read_calib_param_from_file(const char* param_path, double* intrinsi
     fs_in["camera_dist_r"] >> dist_r_mat;
     fs_in["R"] >> R_ptr_mat;
     fs_in["T"] >> T_ptr_mat;
+
+    return true;
+}
+
+bool Scan3D::read_calib_param_from_file(const char* param_path, double* intrinsic_l, double* intrinsic_r, double* intrinsic_rgb, double* dist_l, double* dist_r, double* dist_rgb, double* R_ptr, double* R_rgb_ptr, double* T_ptr, double* T_rgb_ptr)
+{
+    std::string file_path(param_path);
+    cv::FileStorage fs_in, fs_out;
+
+    if (!fs_in.open(file_path, cv::FileStorage::READ))
+    {
+        fs_in.release();
+        return false;
+    }
+
+    cv::Mat intrinsic_l_mat(3, 3, CV_64F, intrinsic_l);
+    cv::Mat intrinsic_r_mat(3, 3, CV_64F, intrinsic_r);
+    cv::Mat intrinsic_rgb_mat(3, 3, CV_64F, intrinsic_rgb);
+    cv::Mat dist_l_mat(1, 5, CV_64F, dist_l);
+    cv::Mat dist_r_mat(1, 5, CV_64F, dist_r);
+    cv::Mat dist_rgb_mat(1, 5, CV_64F, dist_rgb);
+    cv::Mat R_ptr_mat(3, 3, CV_64F, R_ptr);
+    cv::Mat T_ptr_mat(3, 1, CV_64F, T_ptr);
+    cv::Mat R_rgb_ptr_mat(3, 3, CV_64F, R_rgb_ptr);
+    cv::Mat T_rgb_ptr_mat(3, 1, CV_64F, T_rgb_ptr);
+
+    fs_in["camera_intrinsic_l"] >> intrinsic_l_mat;
+    fs_in["camera_dist_l"] >> dist_l_mat;
+    fs_in["camera_intrinsic_r"] >> intrinsic_r_mat;
+    fs_in["camera_dist_r"] >> dist_r_mat;
+    fs_in["R"] >> R_ptr_mat;
+    fs_in["T"] >> T_ptr_mat;
+    fs_in["camera_intrinsic_rgb"] >> intrinsic_rgb_mat;
+    fs_in["camera_dist_rgb"] >> dist_rgb_mat;
+    fs_in["R_l2rgb"] >> R_rgb_ptr_mat;
+    fs_in["T_l2rgb"] >> T_rgb_ptr_mat;
 
     return true;
 }

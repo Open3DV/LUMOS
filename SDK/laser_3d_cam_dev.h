@@ -27,6 +27,12 @@ extern "C"
 
 	};
 
+	enum class LumosCameraSelect
+	{
+		GrayCamera = 0,
+		RGBCamera = 1,
+	};
+
 	//函数名： DfConnect
 	//功能： 连接相机
 	//输入参数： camera_id（相机ip地址）
@@ -34,12 +40,40 @@ extern "C"
 	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
 	DF_SDK_API int DfConnect(const char* camera_id);
 
+	//函数名： DfSelectCamera
+	//功能： 设置拍摄所用的相机，采集时，会根据选择的相机返回对于应拍照数据（分辨率、内参、通道数、亮度图、深度图）
+	//输入参数：camera_select(GrayCamera：左目灰色相机、RGBCamera：中间彩色相机)
+	//输出参数：  
+	//返回值： 类型（int）:返回0表示设置参数成功;返回-1表示设置参数失败。
+	DF_SDK_API int DfSelectCamera(LumosCameraSelect camera_select);
+
+	//函数名： DfGetSelectedCamera
+	//功能： 获取选择的拍摄相机
+	//输入参数：
+	//输出参数：camera_select(GrayCamera：左目灰色相机、RGBCamera：中间彩色相机)
+	//返回值： 类型（int）:返回0表示获取参数成功;返回-1表示获取参数失败。
+	DF_SDK_API int DfGetSelectedCamera(LumosCameraSelect& camera_select);
+
+	//函数名： DfGetCameraChannels
+	//功能： 获取相机图像通道数
+	//输入参数： 无
+	//输出参数： channels(通道数)
+	//返回值： 类型（int）:返回0表示获取参数成功;返回-1表示获取参数失败.
+	DF_SDK_API int  DfGetCameraChannels(int* channels);
+
 	//函数名： DfGetCameraResolution
 	//功能： 获取相机分辨率
 	//输入参数： 无
 	//输出参数： width(图像宽)、height(图像高)
 	//返回值： 类型（int）:返回0表示获取参数成功;返回-1表示获取参数失败.
 	DF_SDK_API int  DfGetCameraResolution(int* width, int* height);
+
+	//函数名： DfGetGrayCameraResolution
+	//功能： 获取相机分辨率
+	//输入参数： 无
+	//输出参数： width(图像宽)、height(图像高)
+	//返回值： 类型（int）:返回0表示获取参数成功;返回-1表示获取参数失败.
+	DF_SDK_API int  DfGetGrayCameraResolution(int* width, int* height);
 
 	//函数名： DfGetRGBCameraResolution
 	//功能： 获取彩色相机分辨率
@@ -126,6 +160,30 @@ extern "C"
 	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
 	DF_SDK_API int DfGetFrame01HDR(float* depth, int depth_buf_size,
 		unsigned char* brightness, int brightness_buf_size);
+
+	//函数名： DfGetFrame03
+	//功能： 获取一帧彩色深度数据（黑白亮度图+彩色亮度图+深度图+深度图转彩色表），基于Raw01的相移图
+	//输入参数：depth_buf_size（深度图尺寸）、brightness_buf_size（亮度图尺寸）
+	//输出参数：depth（深度图）、brightness（亮度图）、color_brightness（彩色亮度图）、depth2color（深度图转彩色表）
+	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
+	DF_SDK_API int DfGetFrame03(float* depth, int depth_buf_size,
+		unsigned char* brightness, int brightness_buf_size, unsigned char* color_brightness, int color_brightness_buf_size, unsigned short* depth2color, int depth2color_buf_size);
+
+	//函数名： DfGetFrame04
+	//功能： 获取一帧彩色深度数据（黑白亮度图+彩色亮度图+深度图+深度图转彩色表），基于Raw01的相移图
+	//输入参数：depth_buf_size（深度图尺寸）、brightness_buf_size（亮度图尺寸）
+	//输出参数：depth（深度图）、brightness（亮度图）、color_brightness（彩色亮度图）、depth2color（深度图转彩色表）
+	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
+	DF_SDK_API int DfGetFrame04(float* depth, int depth_buf_size,
+		unsigned char* brightness, int brightness_buf_size, unsigned char* color_brightness, int color_brightness_buf_size, unsigned char* resize_color_brightness, int resize_color_brightness_buf_size, float* resize_color_depth, int resize_color_depth_buf_size);
+
+	//函数名： DfGetFrame04HDR
+	//功能： 获取一帧HDR彩色深度数据（黑白亮度图+彩色亮度图+深度图+深度图转彩色表），基于Raw01的相移图
+	//输入参数：depth_buf_size（深度图尺寸）、brightness_buf_size（亮度图尺寸）
+	//输出参数：depth（深度图）、brightness（亮度图）、color_brightness（彩色亮度图）、depth2color（深度图转彩色表）
+	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
+	DF_SDK_API int DfGetFrame04HDR(float* depth, int depth_buf_size,
+		unsigned char* brightness, int brightness_buf_size, unsigned char* color_brightness, int color_brightness_buf_size, unsigned char* resize_color_brightness, int resize_color_brightness_buf_size, float* resize_color_depth, int resize_color_depth_buf_size);
 
 	//函数名： DfGetFrameTest
 	//功能： 获取一帧数据（亮度图+深度图），以及28张基于Raw01的相移图

@@ -62,6 +62,9 @@ int camera_width_ = 1920;
 int camera_height_ = 1200;
 int rgb_camera_width_ = 1920;
 int rgb_camera_height_ = 1200;
+int resize_rgb_camera_width_ = rgb_camera_width_ / 2;
+int resize_rgb_camera_height_ = rgb_camera_height_ / 2;
+
 int image_size_ = camera_width_ * camera_height_;
 int rgb_image_size_ = rgb_camera_width_ * rgb_camera_height_ * 3;
 
@@ -69,16 +72,30 @@ const char* camera_ip_ = "";
 
 
 int depth_buf_size_ = 0;
+int resize_color_depth_buf_size_ = 0;
 int pointcloud_buf_size_ = 0;
-int brightness_bug_size_ = 0;
+int resize_color_pointcloud_buf_size_ = 0;
+int brightness_buf_size_ = 0;
+int rgb_brightness_buf_size_ = 0;
+int resize_color_brightness_buf_size_ = 0;
+int depth2texture_buf_size_ = 0;
 float* point_cloud_buf_ = NULL;
+float* resize_color_point_cloud_buf_ = NULL;
 float* trans_point_cloud_buf_ = NULL;
+float* resize_color_trans_point_cloud_buf_ = NULL;
 bool transform_pointcloud_flag_ = false;
 float* depth_buf_ = NULL;
+float* resize_color_depth_buf_ = NULL;
 unsigned char* brightness_buf_ = NULL;
+unsigned char* rgb_brightness_buf_ = NULL;
+unsigned char* resize_color_brightness_buf_ = NULL;
+unsigned short* depth2texture_buf_ = NULL;
 float* undistort_map_x_ = NULL;
 float* undistort_map_y_ = NULL;
+float* distorted_map_x_ = NULL;
+float* distorted_map_y_ = NULL;
 
+LumosCameraSelect lumos_camera_select_ = LumosCameraSelect::GrayCamera;
 
 /**************************************************************************************************************/
 
@@ -161,7 +178,6 @@ int on_dropped(void* param)
 
 int depthTransformPointcloud(float* depth_map, float* point_cloud_map)
 {
-
 	if (!connected_flag_)
 	{
 		return DF_NOT_CONNECT;
@@ -184,16 +200,45 @@ int depthTransformPointcloud(float* depth_map, float* point_cloud_map)
 	int nr = camera_height_;
 	int nc = camera_width_;
 
-#pragma omp parallel for
+	if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
+	{
+		camera_fx = calibration_param_.camera_intrinsic[0];
+		camera_fy = calibration_param_.camera_intrinsic[4];
+		camera_cx = calibration_param_.camera_intrinsic[2];
+		camera_cy = calibration_param_.camera_intrinsic[5];
+		k1 = calibration_param_.camera_distortion[0];
+		k2 = calibration_param_.camera_distortion[1];
+		p1 = calibration_param_.camera_distortion[2];
+		p2 = calibration_param_.camera_distortion[3];
+		k3 = calibration_param_.camera_distortion[4];
+		nr = camera_height_;
+		nc = camera_width_;
+	}
+	else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+	{
+		camera_fx = calibration_param_.rgb_camera_intrinsic[0] / 2.;
+		camera_fy = calibration_param_.rgb_camera_intrinsic[4] / 2.;
+		camera_cx = calibration_param_.rgb_camera_intrinsic[2] / 2.;
+		camera_cy = calibration_param_.rgb_camera_intrinsic[5] / 2.;
+		k1 = 0;
+		k2 = 0;
+		p1 = 0;
+		p2 = 0;
+		k3 = 0;
+		nr = resize_rgb_camera_height_;
+		nc = resize_rgb_camera_width_;
+	}
+	else
+	{
+		return DF_FAILED;
+	}
+
+//#pragma omp parallel for
 	for (int r = 0; r < nr; r++)
 	{
-
 		for (int c = 0; c < nc; c++)
 		{
-
-
-
-			int offset = r * camera_width_ + c;
+			int offset = r * nc + c;
 			if (depth_map[offset] > 0)
 			{
 				//double undistort_x = c;
@@ -201,14 +246,12 @@ int depthTransformPointcloud(float* depth_map, float* point_cloud_map)
 				//undistortPoint(c, r, camera_fx, camera_fy,
 				//	camera_cx, camera_cy, k1, k2, k3, p1, p2, undistort_x, undistort_y);
 
-				float undistort_x = undistort_map_x_[offset];
-				float undistort_y = undistort_map_y_[offset];
+				float undistort_x = c;
+				float undistort_y = r;
 
 				point_cloud_map[3 * offset + 0] = (undistort_x - camera_cx) * depth_map[offset] / camera_fx;
 				point_cloud_map[3 * offset + 1] = (undistort_y - camera_cy) * depth_map[offset] / camera_fy;
 				point_cloud_map[3 * offset + 2] = depth_map[offset];
-
-
 			}
 			else
 			{
@@ -217,13 +260,111 @@ int depthTransformPointcloud(float* depth_map, float* point_cloud_map)
 				point_cloud_map[3 * offset + 2] = 0;
 			}
 
-
 		}
 
 	}
 
-
 	return DF_SUCCESS;
+}
+
+int undistortRGBBrightnessMap(unsigned char* brightness_map) //最近邻
+{
+
+	int nr = rgb_camera_height_;
+	int nc = rgb_camera_width_;
+
+	unsigned char* brightness_map_temp = new unsigned char[nr * nc * 3];
+	memset(brightness_map_temp, 0, sizeof(unsigned char) * nr * nc * 3);
+
+#pragma omp parallel for
+	for (int r = 0; r < nr; r++)
+	{
+
+		for (int c = 0; c < nc; c++)
+		{
+			int offset = r * nc + c;
+			int distort_x, distort_y;
+			//distortPoint(c, r, distort_x, distort_y);
+			distort_x = distorted_map_x_[offset] + 0.5;
+			distort_y = distorted_map_y_[offset] + 0.5;
+			// 进行双线性差值
+			if (distort_x > 0 && distort_x < nc - 1 && distort_y > 0 && distort_y < nr - 1)
+			{
+				int distort_offset = distort_y * nc + distort_x;
+				brightness_map_temp[offset * 3] = brightness_map[distort_offset * 3];
+				brightness_map_temp[offset * 3 + 1] = brightness_map[distort_offset * 3 + 1];
+				brightness_map_temp[offset * 3 + 2] = brightness_map[distort_offset * 3 + 2];
+			}
+		}
+
+	}
+
+	memcpy(brightness_map, brightness_map_temp, sizeof(unsigned char) * nr * nc * 3);
+	delete[] brightness_map_temp;
+	brightness_map_temp = NULL;
+	return DF_SUCCESS;
+}
+
+int resizeRGBImageToHalf(unsigned char* rgb_brightness_map, int orig_width, int orig_height, unsigned char* output_rgb_brightness_map)
+{
+	int out_width = orig_width / 2;
+	int out_height = orig_height / 2;
+	LOG(INFO) << "out_width: " << out_width;
+	LOG(INFO) << "out_height: " << out_height;
+
+//#pragma omp parallel for
+	for (int row = 0; row < out_height; row += 1)
+	{
+		for (int col = 0; col < out_width; col += 1)
+		{
+			output_rgb_brightness_map[row * out_width * 3 + col * 3] = ((int)rgb_brightness_map[2 * row * orig_width * 3 + col * 3 * 2] + (int)rgb_brightness_map[2 * row * orig_width * 3 + col * 3 * 2 + 3] + (int)rgb_brightness_map[(2 * row + 1) * orig_width * 3 + col * 3 * 2] + (int)rgb_brightness_map[(2 * row + 1) * orig_width * 3 + col * 3 * 2 + 3]) / 4;
+
+			output_rgb_brightness_map[row * out_width * 3 + col * 3 + 1] = ((int)rgb_brightness_map[2 * row * orig_width * 3 + col * 3 * 2 + 1] + (int)rgb_brightness_map[2 * row * orig_width * 3 + col * 3 * 2 + 3 + 1] + (int)rgb_brightness_map[(2 * row + 1) * orig_width * 3 + col * 3 * 2 + 1] + (int)rgb_brightness_map[(2 * row + 1) * orig_width * 3 + col * 3 * 2 + 3 + 1]) / 4;
+
+			output_rgb_brightness_map[row * out_width * 3 + col * 3 + 2] = ((int)rgb_brightness_map[2 * row * orig_width * 3 + col * 3 * 2 + 2] + (int)rgb_brightness_map[2 * row * orig_width * 3 + col * 3 * 2 + 3 + 2] + (int)rgb_brightness_map[(2 * row + 1) * orig_width * 3 + col * 3 * 2 + 2] + (int)rgb_brightness_map[(2 * row + 1) * orig_width * 3 + col * 3 * 2 + 3 + 2]) / 4;
+		}
+	}
+	return DF_SUCCESS;
+}
+
+bool convertDepthToRGBDepth(float* depth_input_ptr, float* depth_output, float* l2rgb_r_ptr, float* l2rgb_t_ptr, float* camera_intrinsic_ptr, float* rgb_camera_intrinsic_ptr, int width, int height, int rgb_width, int rgb_height)
+{
+//#pragma omp parallel for
+	for (int row = 0; row < height; row += 1)
+	{
+		//float* depth_input_ptr = depth_input + (long long)row * width;
+		for (int col = 0; col < width; col += 1)
+		{
+			if (depth_input_ptr[row * width + col] < 1)
+			{
+				continue;
+			}
+
+			// 计算成点云
+			float z = depth_input_ptr[row * width + col];
+			float x = z * ((col - camera_intrinsic_ptr[2]) / camera_intrinsic_ptr[0]);
+			float y = z * ((row - camera_intrinsic_ptr[5]) / camera_intrinsic_ptr[4]);
+
+			// 然后旋转平移
+			float rgb_x = l2rgb_r_ptr[0] * x + l2rgb_r_ptr[1] * y + l2rgb_r_ptr[2] * z + l2rgb_t_ptr[0];
+			float rgb_y = l2rgb_r_ptr[3] * x + l2rgb_r_ptr[4] * y + l2rgb_r_ptr[5] * z + l2rgb_t_ptr[1];
+			float rgb_z = l2rgb_r_ptr[6] * x + l2rgb_r_ptr[7] * y + l2rgb_r_ptr[8] * z + l2rgb_t_ptr[2];
+
+			// 转换坐标系成为图像坐标
+			int rgb_u = (rgb_camera_intrinsic_ptr[0] * rgb_x) / rgb_z + rgb_camera_intrinsic_ptr[2] + 0.5;
+			int rgb_v = (rgb_camera_intrinsic_ptr[4] * rgb_y) / rgb_z + rgb_camera_intrinsic_ptr[5] + 0.5;
+
+			// 然后判断并且赋值保存
+			if (rgb_u > 0 && rgb_u < rgb_width && rgb_v > 0 && rgb_v < rgb_height)
+			{
+				if (depth_output[rgb_v * rgb_width + rgb_u] < rgb_z)
+					depth_output[rgb_v * rgb_width + rgb_u] = rgb_z;
+			}
+
+		}
+	}
+
+	return true;
 }
 
 void rolloutHandler(const char* filename, std::size_t size)
@@ -385,7 +526,7 @@ DF_SDK_API int DfConnect(const char* camera_id)
 
 	int width, height;
 	int rgb_width, rgb_height;
-	ret = DfGetCameraResolution(&width, &height);
+	ret = DfGetGrayCameraResolution(&width, &height);
 	ret = DfGetRGBCameraResolution(&rgb_width, &rgb_height);
 	if (ret != DF_SUCCESS)
 	{
@@ -410,6 +551,9 @@ DF_SDK_API int DfConnect(const char* camera_id)
 	rgb_camera_width_ = rgb_width;
 	rgb_camera_height_ = rgb_height;
 
+	resize_rgb_camera_width_ = rgb_width / 2;
+	resize_rgb_camera_height_ = rgb_height / 2;
+
 	camera_ip_ = camera_id;
 	connected_flag_ = true;
 
@@ -418,37 +562,64 @@ DF_SDK_API int DfConnect(const char* camera_id)
 	depth_buf_size_ = image_size_ * 1 * 4;
 	depth_buf_ = (float*)(new char[depth_buf_size_]);
 
+	resize_color_depth_buf_size_ = rgb_camera_height_ * rgb_camera_width_ / 4 * 4;
+	resize_color_depth_buf_ = (float*)(new char[resize_color_depth_buf_size_]);
+
 	pointcloud_buf_size_ = depth_buf_size_ * 3;
 	point_cloud_buf_ = (float*)(new char[pointcloud_buf_size_]);
 
+	resize_color_pointcloud_buf_size_ = resize_color_depth_buf_size_ * 3;
+	resize_color_point_cloud_buf_ = (float*)(new char[resize_color_pointcloud_buf_size_]);
+
 	trans_point_cloud_buf_ = (float*)(new char[pointcloud_buf_size_]);
 
-	brightness_bug_size_ = image_size_;
-	brightness_buf_ = new unsigned char[brightness_bug_size_];
+	resize_color_trans_point_cloud_buf_ = (float*)(new char[resize_color_pointcloud_buf_size_]);
 
+	brightness_buf_size_ = image_size_;
+	brightness_buf_ = new unsigned char[brightness_buf_size_];
+
+	rgb_brightness_buf_size_ = rgb_camera_width_ * rgb_camera_height_ * 3;
+	rgb_brightness_buf_ = new unsigned char[rgb_brightness_buf_size_];
+
+	resize_color_brightness_buf_size_ = rgb_camera_width_ * rgb_camera_height_ * 3 / 4;
+	resize_color_brightness_buf_ = new unsigned char[resize_color_brightness_buf_size_];
+
+	depth2texture_buf_size_ = image_size_ * 2 * 2;
+	depth2texture_buf_ = (unsigned short*)(new unsigned char[depth2texture_buf_size_]);
 
 	/******************************************************************************************************/
 	//产生畸变校正表
 	undistort_map_x_ = (float*)(new char[depth_buf_size_]);
 	undistort_map_y_ = (float*)(new char[depth_buf_size_]);
 
+	distorted_map_x_ = (float*)(new char[(long long)rgb_camera_width_ * rgb_camera_height_ * 4]);
+	distorted_map_y_ = (float*)(new char[(long long)rgb_camera_width_ * rgb_camera_height_ * 4]);
 
 	float camera_fx = calibration_param_.camera_intrinsic[0];
 	float camera_fy = calibration_param_.camera_intrinsic[4];
-
 	float camera_cx = calibration_param_.camera_intrinsic[2];
 	float camera_cy = calibration_param_.camera_intrinsic[5];
-
-
 	float k1 = calibration_param_.camera_distortion[0];
 	float k2 = calibration_param_.camera_distortion[1];
 	float p1 = calibration_param_.camera_distortion[2];
 	float p2 = calibration_param_.camera_distortion[3];
 	float k3 = calibration_param_.camera_distortion[4];
 
-
 	int nr = camera_height_;
 	int nc = camera_width_;
+
+	float rgb_camera_fx = calibration_param_.rgb_camera_intrinsic[0];
+	float rgb_camera_fy = calibration_param_.rgb_camera_intrinsic[4];
+	float rgb_camera_cx = calibration_param_.rgb_camera_intrinsic[2];
+	float rgb_camera_cy = calibration_param_.rgb_camera_intrinsic[5];
+	float rgb_k1 = calibration_param_.rgb_camera_distortion[0];
+	float rgb_k2 = calibration_param_.rgb_camera_distortion[1];
+	float rgb_p1 = calibration_param_.rgb_camera_distortion[2];
+	float rgb_p2 = calibration_param_.rgb_camera_distortion[3];
+	float rgb_k3 = calibration_param_.rgb_camera_distortion[4];
+
+	int rgb_nr = rgb_camera_height_;
+	int rgb_nc = rgb_camera_width_;
 
 #pragma omp parallel for
 	for (int r = 0; r < nr; r++)
@@ -470,6 +641,27 @@ DF_SDK_API int DfConnect(const char* camera_id)
 		}
 
 	}
+
+	// 生成畸变矫正的畸变表
+#pragma omp parallel for
+	for (int r = 0; r < rgb_nr; r++)
+	{
+
+		for (int c = 0; c < rgb_nc; c++)
+		{
+			float distorted_x, distorted_y;
+
+
+			int offset = r * rgb_nc + c;
+
+			distortPoint(rgb_camera_fx, rgb_camera_fy, rgb_camera_cx, rgb_camera_cy, rgb_k1, rgb_k2, rgb_k3, rgb_p1, rgb_p2,
+				c, r, distorted_x, distorted_y);
+
+			distorted_map_x_[offset] = (float)distorted_x;
+			distorted_map_y_[offset] = (float)distorted_y;
+		}
+
+	}
 	/*****************************************************************************************************************/
 
 	el::Loggers::addFlag(el::LoggingFlag::StrictLogFileSizeCheck);
@@ -486,7 +678,30 @@ DF_SDK_API int DfConnect(const char* camera_id)
 	return 0;
 }
 
-DF_SDK_API int DfGetCameraResolution(int* width, int* height)
+//函数名： DfGetCameraResolution
+//功能： 获取相机分辨率
+//输入参数： 无
+//输出参数： width(图像宽)、height(图像高)
+//返回值： 类型（int）:返回0表示获取参数成功;返回-1表示获取参数失败.
+DF_SDK_API int  DfGetCameraResolution(int* width, int* height)
+{
+	if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
+	{
+		*width = camera_width_;
+		*height = camera_height_;
+	}
+	else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+	{
+		*width = resize_rgb_camera_width_;
+		*height = resize_rgb_camera_height_;
+	}
+	else
+	{
+		return DF_FAILED;
+	}
+}
+
+DF_SDK_API int DfGetGrayCameraResolution(int* width, int* height)
 {
 	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
 	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
@@ -494,7 +709,7 @@ DF_SDK_API int DfGetCameraResolution(int* width, int* height)
 		LOG(INFO) << "--";
 	}
 
-	LOG(INFO) << "DfGetCameraResolution:";
+	LOG(INFO) << "DfGetGrayCameraResolution:";
 	*width = camera_width_;
 	*height = camera_height_;
 
@@ -646,8 +861,17 @@ DF_SDK_API int DfDisconnect(const char* camera_id)
 	delete[] brightness_buf_;
 	delete[] point_cloud_buf_;
 	delete[] trans_point_cloud_buf_;
+	delete[] resize_color_trans_point_cloud_buf_;
+	delete[] resize_color_depth_buf_;
+	delete[] resize_color_brightness_buf_;
+	delete[] resize_color_point_cloud_buf_;
+	delete[] rgb_brightness_buf_;
+	delete[] depth2texture_buf_;
+
 	delete[] undistort_map_x_;
 	delete[] undistort_map_y_;
+	delete[] distorted_map_x_;
+	delete[] distorted_map_y_;
 
 
 	connected_flag_ = false;
@@ -672,31 +896,67 @@ DF_SDK_API int DfGetCalibrationParam(struct CalibrationParam* calibration_param)
 	}
 
 	//calibration_param = &calibration_param_;
-
-	for (int i = 0; i < 9; i++)
+	if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
 	{
-		calibration_param->intrinsic[i] = calibration_param_.camera_intrinsic[i];
-	}
+		LOG(INFO) << "get gray camera params";
+		for (int i = 0; i < 9; i++)
+		{
+			calibration_param->intrinsic[i] = calibration_param_.camera_intrinsic[i];
+		}
 
-	for (int i = 0; i < 5; i++)
+		for (int i = 0; i < 5; i++)
+		{
+			calibration_param->distortion[i] = calibration_param_.camera_distortion[i];
+		}
+
+		for (int i = 5; i < 12; i++)
+		{
+			calibration_param->distortion[i] = 0;
+		}
+
+		float extrinsic[4 * 4] = { 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1 };
+
+		for (int i = 0; i < 16; i++)
+		{
+			calibration_param->extrinsic[i] = extrinsic[i];
+		}
+
+
+		return DF_SUCCESS;
+	}
+	else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
 	{
-		calibration_param->distortion[i] = calibration_param_.camera_distortion[i];
-	}
+		LOG(INFO) << "get rgb camera params";
+		for (int i = 0; i < 8; i++)
+		{
+			calibration_param->intrinsic[i] = calibration_param_.rgb_camera_intrinsic[i] / 2.;
+		}
+		calibration_param->intrinsic[8] = 1;
 
-	for (int i = 5; i < 12; i++)
+		for (int i = 0; i < 5; i++)
+		{
+			calibration_param->distortion[i] = 0;
+		}
+
+		for (int i = 5; i < 12; i++)
+		{
+			calibration_param->distortion[i] = 0;
+		}
+
+		float extrinsic[4 * 4] = { 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1 };
+
+		for (int i = 0; i < 16; i++)
+		{
+			calibration_param->extrinsic[i] = extrinsic[i];
+		}
+
+
+		return 0;
+	}
+	else
 	{
-		calibration_param->distortion[i] = 0;
+		return DF_FAILED;
 	}
-
-	float extrinsic[4 * 4] = { 1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1 };
-
-	for (int i = 0; i < 16; i++)
-	{
-		calibration_param->extrinsic[i] = extrinsic[i];
-	}
-
-
-	return 0;
 }
 
 
@@ -1060,6 +1320,276 @@ DF_SDK_API int DfGetFrame01HDR(float* depth, int depth_buf_size,
 	}
 
 	LOG(INFO) << "Get frame01 success";
+	close_socket(g_sock);
+	return DF_SUCCESS;
+}
+
+DF_SDK_API int DfGetFrame03(float* depth, int depth_buf_size,
+	unsigned char* brightness, int brightness_buf_size, unsigned char* color_brightness, int color_brightness_buf_size, unsigned short* depth2color, int depth2color_buf_size)
+{
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+	LOG(INFO) << "GetFrame03";
+	assert(depth_buf_size == image_size_ * sizeof(float) * 1);
+	assert(brightness_buf_size == image_size_ * sizeof(char) * 1);
+	assert(color_brightness_buf_size == rgb_image_size_);
+	assert(depth2color_buf_size == image_size_ * sizeof(unsigned short) * 2);
+	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+	if (ret == DF_FAILED)
+	{
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+
+	ret = send_command(DF_CMD_GET_FRAME_03, g_sock);
+	ret = send_buffer((char*)&token, sizeof(token), g_sock);
+	int command;
+	ret = recv_command(&command, g_sock);
+	if (ret == DF_FAILED)
+	{
+		LOG(ERROR) << "Failed to recv command";
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+	if (command == DF_CMD_OK)
+	{
+		LOG(INFO) << "token checked ok";
+		LOG(INFO) << "receiving buffer, depth_buf_size=" << depth_buf_size;
+		ret = recv_buffer((char*)depth, depth_buf_size, g_sock);
+		LOG(INFO) << "depth received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, brightness_buf_size=" << brightness_buf_size;
+		ret = recv_buffer((char*)brightness, brightness_buf_size, g_sock);
+		LOG(INFO) << "brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, color_brightness_buf_size=" << color_brightness_buf_size;
+		ret = recv_buffer((char*)color_brightness, color_brightness_buf_size, g_sock);
+		LOG(INFO) << "color_brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, depth2color_buf_size=" << color_brightness_buf_size;
+		ret = recv_buffer((char*)depth2color, depth2color_buf_size, g_sock);
+		LOG(INFO) << "depth2color received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		//brightness = (unsigned char*)depth + depth_buf_size;
+	}
+	else if (command == DF_CMD_REJECT)
+	{
+		LOG(INFO) << "Get frame rejected";
+		close_socket(g_sock);
+		return DF_BUSY;
+	}
+
+	undistortRGBBrightnessMap(color_brightness);
+
+	LOG(INFO) << "Get frame03 success";
+	close_socket(g_sock);
+	return DF_SUCCESS;
+}
+
+DF_SDK_API int DfGetFrame04(float* depth, int depth_buf_size,
+	unsigned char* brightness, int brightness_buf_size, unsigned char* color_brightness, int color_brightness_buf_size, unsigned char* resize_color_brightness, int resize_color_brightness_buf_size, float* resize_color_depth, int resize_color_depth_buf_size)
+{
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+	LOG(INFO) << "GetFrame04";
+	assert(depth_buf_size == image_size_ * sizeof(float) * 1);
+	assert(brightness_buf_size == image_size_ * sizeof(char) * 1);
+	assert(color_brightness_buf_size == rgb_image_size_);
+	assert(resize_color_brightness_buf_size == rgb_image_size_ * sizeof(unsigned char) / 4);
+	assert(resize_color_depth_buf_size == rgb_image_size_ * sizeof(float) / 4);
+	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+	if (ret == DF_FAILED)
+	{
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+
+	ret = send_command(DF_CMD_GET_FRAME_04, g_sock);
+	ret = send_buffer((char*)&token, sizeof(token), g_sock);
+	int command;
+	ret = recv_command(&command, g_sock);
+	if (ret == DF_FAILED)
+	{
+		LOG(ERROR) << "Failed to recv command";
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+	if (command == DF_CMD_OK)
+	{
+		LOG(INFO) << "token checked ok";
+		LOG(INFO) << "receiving buffer, depth_buf_size=" << depth_buf_size;
+		ret = recv_buffer((char*)depth, depth_buf_size, g_sock);
+		LOG(INFO) << "depth received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, brightness_buf_size=" << brightness_buf_size;
+		ret = recv_buffer((char*)brightness, brightness_buf_size, g_sock);
+		LOG(INFO) << "brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, color_brightness_buf_size=" << color_brightness_buf_size;
+		ret = recv_buffer((char*)color_brightness, color_brightness_buf_size, g_sock);
+		LOG(INFO) << "color_brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		//brightness = (unsigned char*)depth + depth_buf_size;
+	}
+	else if (command == DF_CMD_REJECT)
+	{
+		LOG(INFO) << "Get frame rejected";
+		close_socket(g_sock);
+		return DF_BUSY;
+	}
+
+	undistortRGBBrightnessMap(color_brightness);
+
+	resizeRGBImageToHalf(color_brightness, rgb_camera_width_, rgb_camera_height_, resize_color_brightness);
+
+	LOG(INFO) << "resizeRGBImageToHalf DONE";
+
+	float rgb_camera_intrinsic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	rgb_camera_intrinsic[0] = calibration_param_.rgb_camera_intrinsic[0] / 2.;
+	rgb_camera_intrinsic[2] = calibration_param_.rgb_camera_intrinsic[2] / 2.;
+	rgb_camera_intrinsic[4] = calibration_param_.rgb_camera_intrinsic[4] / 2.;
+	rgb_camera_intrinsic[5] = calibration_param_.rgb_camera_intrinsic[5] / 2.;
+	rgb_camera_intrinsic[8] = 1.;
+
+	convertDepthToRGBDepth(depth, resize_color_depth, calibration_param_.rotation_matrix, calibration_param_.translation_matrix, calibration_param_.camera_intrinsic, rgb_camera_intrinsic, camera_width_, camera_height_, rgb_camera_width_ / 2, rgb_camera_height_ / 2);
+
+	LOG(INFO) << "Get frame04 success";
+	close_socket(g_sock);
+	return DF_SUCCESS;
+}
+	
+DF_SDK_API int DfGetFrame04HDR(float* depth, int depth_buf_size,
+	unsigned char* brightness, int brightness_buf_size, unsigned char* color_brightness, int color_brightness_buf_size, unsigned char* resize_color_brightness, int resize_color_brightness_buf_size, float* resize_color_depth, int resize_color_depth_buf_size)
+{
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+	LOG(INFO) << "GetFrame04";
+	assert(depth_buf_size == image_size_ * sizeof(float) * 1);
+	assert(brightness_buf_size == image_size_ * sizeof(char) * 1);
+	assert(color_brightness_buf_size == rgb_image_size_);
+	assert(depth2color_buf_size == image_size_ * sizeof(unsigned short) * 2);
+	assert(resize_color_brightness_buf_size == rgb_image_size_ * sizeof(unsigned char) / 4);
+	assert(resize_color_depth_buf_size == rgb_image_size_ * sizeof(float) / 4);
+	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+	if (ret == DF_FAILED)
+	{
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+
+	ret = send_command(DF_CMD_GET_FRAME_04_HDR, g_sock);
+	ret = send_buffer((char*)&token, sizeof(token), g_sock);
+	int command;
+	ret = recv_command(&command, g_sock);
+	if (ret == DF_FAILED)
+	{
+		LOG(ERROR) << "Failed to recv command";
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+	if (command == DF_CMD_OK)
+	{
+		LOG(INFO) << "token checked ok";
+		LOG(INFO) << "receiving buffer, depth_buf_size=" << depth_buf_size;
+		ret = recv_buffer((char*)depth, depth_buf_size, g_sock);
+		LOG(INFO) << "depth received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, brightness_buf_size=" << brightness_buf_size;
+		ret = recv_buffer((char*)brightness, brightness_buf_size, g_sock);
+		LOG(INFO) << "brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, color_brightness_buf_size=" << color_brightness_buf_size;
+		ret = recv_buffer((char*)color_brightness, color_brightness_buf_size, g_sock);
+		LOG(INFO) << "color_brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+	}
+	else if (command == DF_CMD_REJECT)
+	{
+		LOG(INFO) << "Get frame rejected";
+		close_socket(g_sock);
+		return DF_BUSY;
+	}
+
+	undistortRGBBrightnessMap(color_brightness);
+
+	resizeRGBImageToHalf(color_brightness, rgb_camera_width_, rgb_camera_height_, resize_color_brightness);
+
+	LOG(INFO) << "resizeRGBImageToHalf DONE";
+
+	float rgb_camera_intrinsic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	rgb_camera_intrinsic[0] = calibration_param_.rgb_camera_intrinsic[0] / 2.;
+	rgb_camera_intrinsic[2] = calibration_param_.rgb_camera_intrinsic[2] / 2.;
+	rgb_camera_intrinsic[4] = calibration_param_.rgb_camera_intrinsic[4] / 2.;
+	rgb_camera_intrinsic[5] = calibration_param_.rgb_camera_intrinsic[5] / 2.;
+	rgb_camera_intrinsic[8] = 1.;
+
+	convertDepthToRGBDepth(depth, resize_color_depth, calibration_param_.rotation_matrix, calibration_param_.translation_matrix, calibration_param_.camera_intrinsic, rgb_camera_intrinsic, camera_width_, camera_height_, rgb_camera_width_ / 2, rgb_camera_height_ / 2);
+
+	LOG(INFO) << "Get frame04 success";
 	close_socket(g_sock);
 	return DF_SUCCESS;
 }
@@ -3104,6 +3634,47 @@ DF_SDK_API int DfSetParamMultipleExposureModel(int model)
 	return DF_SUCCESS;
 }
 
+//函数名： DfSelectCamera
+//功能： 设置拍摄所用的相机，采集时，会根据选择的相机返回对于应拍照数据（分辨率、内参、通道数、亮度图、深度图）
+//输入参数：camera_select(GrayCamera：左目灰色相机、RGBCamera：中间彩色相机)
+//输出参数：  
+//返回值： 类型（int）:返回0表示设置参数成功;返回-1表示设置参数失败。
+DF_SDK_API int DfSelectCamera(LumosCameraSelect camera_select)
+{
+	lumos_camera_select_ = camera_select;
+	return DF_SUCCESS;
+}
+
+//函数名： DfGetSelectedCamera
+//功能： 获取选择的拍摄相机
+//输入参数：
+//输出参数：camera_select(GrayCamera：左目灰色相机、RGBCamera：中间彩色相机)
+//返回值： 类型（int）:返回0表示获取参数成功;返回-1表示获取参数失败。
+DF_SDK_API int DfGetSelectedCamera(LumosCameraSelect& camera_select)
+{
+	camera_select = lumos_camera_select_;
+	return DF_SUCCESS;
+}
+
+//函数名： DfGetCameraChannels
+//功能： 获取相机图像通道数
+//输入参数： 无
+//输出参数： channels(通道数)
+//返回值： 类型（int）:返回0表示获取参数成功;返回-1表示获取参数失败.
+DF_SDK_API int  DfGetCameraChannels(int* channels)
+{
+	if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
+	{
+		*channels = 1;
+	}
+	else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+	{
+		*channels = 3;
+	}
+
+	return DF_SUCCESS;
+}
+
 //函数名： DfCaptureData
 //功能： 采集一帧数据并阻塞至返回状态
 //输入参数： exposure_num（曝光次数）：大于1的为多曝光模式
@@ -3121,11 +3692,23 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 		{
 		case 1:
 		{
-			ret = DfGetFrame01HDR(depth_buf_, depth_buf_size_, brightness_buf_, brightness_bug_size_);
-			if (DF_SUCCESS != ret)
+			if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
 			{
-				return ret;
+				ret = DfGetFrame01HDR(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_);
+				if (DF_SUCCESS != ret)
+				{
+					return ret;
+				}
 			}
+			else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+			{
+				ret = DfGetFrame04HDR(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
+				if (DF_SUCCESS != ret)
+				{
+					return ret;
+				}
+			}
+
 		}
 		break;
 		default:
@@ -3135,12 +3718,23 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 	}
 	else
 	{
-
-		ret = DfGetFrame01(depth_buf_, depth_buf_size_, brightness_buf_, brightness_bug_size_);
-		if (DF_SUCCESS != ret)
+		if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
 		{
-			return ret;
+			ret = DfGetFrame01(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_);
+			if (DF_SUCCESS != ret)
+			{
+				return ret;
+			}
 		}
+		else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+		{
+			ret = DfGetFrame04(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
+			if (DF_SUCCESS != ret)
+			{
+				return ret;
+			}
+		}
+
 	}
 
 
@@ -3244,7 +3838,18 @@ DF_SDK_API int DfGetBrightnessData(unsigned char* brightness)
 
 	LOG(INFO) << "Trans Brightness:";
 
-	memcpy(brightness, brightness_buf_, brightness_bug_size_);
+	if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
+	{
+		memcpy(brightness, brightness_buf_, brightness_buf_size_);
+	}
+	else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+	{
+		memcpy(brightness, resize_color_brightness_buf_, resize_color_brightness_buf_size_);
+	}
+	else
+	{
+		return DF_FAILED;
+	}
 
 	//brightness = brightness_buf_;
 
@@ -3268,21 +3873,18 @@ DF_SDK_API int DfGetDepthDataFloat(float* depth)
 
 
 	LOG(INFO) << "Trans Depth:";
-	int point_num = camera_height_ * camera_width_;
 
-	int nr = camera_height_;
-	int nc = camera_width_;
-
-#pragma omp parallel for
-	for (int r = 0; r < nr; r++)
+	if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
 	{
-		for (int c = 0; c < nc; c++)
-		{
-			int offset = r * camera_width_ + c;
-			depth[offset] = depth_buf_[offset];
-
-		}
-
+		memcpy(depth, depth_buf_, depth_buf_size_);
+	}
+	else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+	{
+		memcpy(depth, resize_color_depth_buf_, resize_color_depth_buf_size_);
+	}
+	else
+	{
+		return DF_FAILED;
 	}
 
 	LOG(INFO) << "Get Depth!";
@@ -3446,28 +4048,56 @@ DF_SDK_API int DfGetHeightMapData(float* height_map)
 	}
 
 	LOG(INFO) << "Transform Pointcloud:";
+	int nr = camera_height_;
+	int nc = camera_width_;
+
+	float* depth_ptr = NULL;
+	float* pointcloud_ptr = NULL;
+	float* trans_pointcloud_ptr = NULL;
+
+	if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
+	{
+		nr = camera_height_;
+		nc = camera_width_;
+
+		depth_ptr = depth_buf_;
+		pointcloud_ptr = point_cloud_buf_;
+		trans_pointcloud_ptr = trans_point_cloud_buf_;
+	}
+	else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+	{
+		nr = resize_rgb_camera_height_;
+		nc = resize_rgb_camera_width_;
+
+		depth_ptr = resize_color_depth_buf_;
+		pointcloud_ptr = resize_color_point_cloud_buf_;
+		trans_pointcloud_ptr = resize_color_trans_point_cloud_buf_;
+	}
+	else
+	{
+		return DF_FAILED;
+	}
 
 	if (!transform_pointcloud_flag_)
 	{
-		depthTransformPointcloud((float*)depth_buf_, (float*)point_cloud_buf_);
+		depthTransformPointcloud((float*)depth_ptr, (float*)pointcloud_ptr);
 		transform_pointcloud_flag_ = true;
 	}
 
 	//memcpy(trans_point_cloud_buf_, point_cloud_buf_, pointcloud_buf_size_);
-	transformPointcloud((float*)point_cloud_buf_, (float*)trans_point_cloud_buf_, system_config_param.standard_plane_external_param, &system_config_param.standard_plane_external_param[9]);
+	transformPointcloud((float*)pointcloud_ptr, (float*)trans_pointcloud_ptr, system_config_param.standard_plane_external_param, &system_config_param.standard_plane_external_param[9]);
 
 
-	int nr = camera_height_;
-	int nc = camera_width_;
+
 #pragma omp parallel for
 	for (int r = 0; r < nr; r++)
 	{
 		for (int c = 0; c < nc; c++)
 		{
-			int offset = r * camera_width_ + c;
-			if (depth_buf_[offset] > 0)
+			int offset = r * nc + c;
+			if (depth_ptr[offset] > 0)
 			{
-				height_map[offset] = trans_point_cloud_buf_[offset * 3 + 2];
+				height_map[offset] = trans_pointcloud_ptr[offset * 3 + 2];
 			}
 			else
 			{
@@ -3498,14 +4128,30 @@ DF_SDK_API int DfGetPointcloudData(float* point_cloud)
 		return DF_NOT_CONNECT;
 	}
 
-
-	if (!transform_pointcloud_flag_)
+	if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
 	{
-		depthTransformPointcloud(depth_buf_, point_cloud_buf_);
-		transform_pointcloud_flag_ = true;
+		if (!transform_pointcloud_flag_)
+		{
+			depthTransformPointcloud(depth_buf_, point_cloud_buf_);
+			transform_pointcloud_flag_ = true;
+		}
+		memcpy(point_cloud, point_cloud_buf_, pointcloud_buf_size_);
+	}
+	else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+	{
+		if (!transform_pointcloud_flag_)
+		{
+			depthTransformPointcloud(resize_color_depth_buf_, resize_color_point_cloud_buf_);
+			transform_pointcloud_flag_ = true;
+		}
+		memcpy(point_cloud, resize_color_point_cloud_buf_, resize_color_pointcloud_buf_size_);
+	}
+	else
+	{
+		return DF_FAILED;
 	}
 
-	memcpy(point_cloud, point_cloud_buf_, pointcloud_buf_size_);
+
 
 
 	LOG(INFO) << "Get Pointcloud!";
@@ -3594,28 +4240,55 @@ DF_SDK_API int DfGetHeightMapDataBaseParam(float* R, float* T, float* height_map
 		return DF_NOT_CONNECT;
 	}
 
+	LOG(INFO) << "Transform Pointcloud:";
+	int nr = camera_height_;
+	int nc = camera_width_;
+
+	float* depth_ptr = NULL;
+	float* pointcloud_ptr = NULL;
+	float* trans_pointcloud_ptr = NULL;
+
+	if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
+	{
+		nr = camera_height_;
+		nc = camera_width_;
+
+		depth_ptr = depth_buf_;
+		pointcloud_ptr = point_cloud_buf_;
+		trans_pointcloud_ptr = trans_point_cloud_buf_;
+	}
+	else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+	{
+		nr = resize_rgb_camera_height_;
+		nc = resize_rgb_camera_width_;
+
+		depth_ptr = resize_color_depth_buf_;
+		pointcloud_ptr = resize_color_point_cloud_buf_;
+		trans_pointcloud_ptr = resize_color_trans_point_cloud_buf_;
+	}
+	else
+	{
+		return DF_FAILED;
+	}
 
 
 	if (!transform_pointcloud_flag_)
 	{
-		depthTransformPointcloud((float*)depth_buf_, (float*)point_cloud_buf_);
+		depthTransformPointcloud((float*)depth_ptr, (float*)pointcloud_ptr);
 		transform_pointcloud_flag_ = true;
 	}
 
-	transformPointcloud((float*)point_cloud_buf_, (float*)trans_point_cloud_buf_, R, T);
+	transformPointcloud((float*)pointcloud_ptr, (float*)trans_pointcloud_ptr, R, T);
 
-
-	int nr = camera_height_;
-	int nc = camera_width_;
 #pragma omp parallel for
 	for (int r = 0; r < nr; r++)
 	{
 		for (int c = 0; c < nc; c++)
 		{
-			int offset = r * camera_width_ + c;
-			if (depth_buf_[offset] > 0)
+			int offset = r * nc + c;
+			if (depth_ptr[offset] > 0)
 			{
-				height_map[offset] = trans_point_cloud_buf_[offset * 3 + 2];
+				height_map[offset] = trans_pointcloud_ptr[offset * 3 + 2];
 			}
 			else
 			{

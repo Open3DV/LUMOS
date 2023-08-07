@@ -49,6 +49,12 @@ public:
     
     int captureFrame01();
 
+    int captureFrame04();
+
+    int captureFrame04MixedHDR();
+
+    int captureFrame03();
+
     int captureFrame01HDR();
 
     int captureFrame01MixedHDR();
@@ -67,6 +73,10 @@ public:
     
     void copyPointcloudData(float* &ptr);
 
+    void copyDepth2ColorData(unsigned short* &ptr);
+
+    void copyColorBrightnessData(unsigned char* &ptr);
+
     void getCameraResolution(int &width, int &height);
 
     void getRGBCameraResolution(int &width, int &height);
@@ -82,6 +92,8 @@ public:
     bool read_hdr_param_from_file(const char* param_path, int& hdr_count, int* exposure_time, int* brightness);
 
     bool read_calib_param_from_file(const char* param_path, double* intrinsic_l, double* intrinsic_r, double* dist_l, double* dist_r, double* R_ptr, double* T_ptr);
+
+    bool read_calib_param_from_file(const char* param_path, double* intrinsic_l, double* intrinsic_r, double* intrinsic_rgb, double* dist_l, double* dist_r, double* dist_rgb, double* R_ptr, double* R_rgb_ptr, double* T_ptr, double* T_rgb_ptr);
 
     bool setParamConfidence(float confidence);
 
@@ -138,8 +150,10 @@ private:
     int rgb_image_height_;
 
     unsigned char* buff_brightness_;
+    unsigned char* buff_color_brightness_;
     float* buff_depth_;
     float* buff_pointcloud_;
+    unsigned short* buff_depth_color_map_;
 
     SystemConfigDataStruct system_config_settings_machine_;
 

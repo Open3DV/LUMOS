@@ -71,6 +71,15 @@ laser_3d_cam.exe --set-hdr-param --ip 192.168.x.x --path ./hdr_params.xml\n\
 15.Get Frame 01 HDR:\n\
 laser_3d_cam.exe --get-frame-01-hdr --ip 192.168.x.x --path ./frame_01_hdr\n\
 \n\
+16.Get Frame 03: \n\
+laser_3d_cam.exe --get-frame-03 --ip 192.168.x.x --path ./frame_03\n\
+\n\
+17.Get Frame 04: \n\
+laser_3d_cam.exe --get-frame-04 --ip 192.168.x.x --path ./frame_04\n\
+18.Get Frame 04 hdr: \n\
+laser_3d_cam.exe --get-frame-04-hdr --ip 192.168.x.x --path ./frame_04_hdr\n\
+\n\
+\n\
 ";
 
 const char* help_info =
@@ -115,11 +124,23 @@ laser_3d_cam.exe --set-camera-gamma --ip 192.168.x.x --gamma 0.5\n\
 13.Get Camera Gamma: 获取相机Gamma矫正\n\
 laser_3d_cam.exe --get-camera-gamma --ip 192.168.x.x\n\
 \n\
+14.Get Frame 03: 获取一帧彩色点云\n\
+laser_3d_cam.exe --get-frame-03 --ip 192.168.x.x --path ./frame_03\n\
+\n\
+15.Get Frame 04: 获取一帧彩色点云（基于RGB相机坐标系）\n\
+laser_3d_cam.exe --get-frame-04 --ip 192.168.x.x --path ./frame_04\n\
+\n\
+16.Get Frame 04 hdr: 获取一帧彩色点云HDR（基于RGB相机坐标系）\n\
+laser_3d_cam.exe --get-frame-04-hdr --ip 192.168.x.x --path ./frame_04_hdr\n\
+\n\
 ";
 
 void help_with_version(const char* help);
 int get_frame_01(const char* ip, const char* frame_path);
 int get_frame_01_hdr(const char* ip, const char* frame_path);
+int get_frame_03(const char* ip, const char* frame_path);
+int get_frame_04(const char* ip, const char* frame_path);
+int get_frame_04_hdr(const char* ip, const char* frame_path);
 int get_frame_test(const char* ip, const char* frame_path);
 void save_frame(int image_height, int image_width, float* depth_buffer, unsigned char* bright_buffer, const char* frame_path);
 void save_images(const char* raw_image_dir, unsigned char* buffer, int width, int height, int image_num);
@@ -128,6 +149,7 @@ void save_color_point_cloud(float* point_cloud_buffer, unsigned char* brightness
 void write_fbin(std::ofstream& out, float val);
 void write_fbin(std::ofstream& out, unsigned char val);
 bool SaveBinPointsToPly(cv::Mat deep_mat, string path, cv::Mat texture_map);
+bool convertDepthToColor(cv::Mat& deep_mat, cv::Mat& color_texture_map, cv::Mat& depth2color_map, cv::Mat& output_color_depth);
 int on_dropped(void* param);
 int get_raw_01(const char* ip, const char* raw_image_dir);
 int get_raw_02(const char* ip, const char* raw_image_dir);
@@ -162,6 +184,9 @@ enum opt_set
 	GET_RAW_03,
 	GET_FRAME_01,
 	GET_FRAME_01_HDR,
+	GET_FRAME_03,
+	GET_FRAME_04,
+	GET_FRAME_04_HDR,
 	GET_FRAME_TEST,
 	HELP,
 	SET_GENERATE_BRIGHTNESS,
@@ -198,6 +223,9 @@ static struct option long_options[] =
 	{"get-raw-03",no_argument,NULL,GET_RAW_03},
 	{"get-frame-01",no_argument,NULL,GET_FRAME_01},
 	{"get-frame-01-hdr",no_argument,NULL,GET_FRAME_01_HDR},
+	{"get-frame-03",no_argument,NULL,GET_FRAME_03},
+	{"get-frame-04",no_argument,NULL,GET_FRAME_04},
+	{"get-frame-04-hdr",no_argument,NULL,GET_FRAME_04_HDR},
 	{"get-frame-test",no_argument,NULL,GET_FRAME_TEST},
 	{"help",no_argument,NULL,HELP},
 	{"set-brightness-param",no_argument,NULL,SET_GENERATE_BRIGHTNESS},
@@ -292,6 +320,15 @@ int main(int argc, char* argv[])
 		break;
 	case GET_FRAME_01_HDR:
 		get_frame_01_hdr(camera_id, path);
+		break;
+	case GET_FRAME_03:
+		get_frame_03(camera_id, path);
+		break;
+	case GET_FRAME_04:
+		get_frame_04(camera_id, path);
+		break;
+	case GET_FRAME_04_HDR:
+		get_frame_04_hdr(camera_id, path);
 		break;
 	case GET_FRAME_TEST:
 		get_frame_test(camera_id, path);
@@ -398,6 +435,33 @@ void save_frame(int image_height, int image_width, float* depth_buffer, unsigned
 
 	cv::Mat depth_map(image_height, image_width, CV_32F, depth_buffer);
 	cv::Mat bright_map(image_height, image_width, CV_8U, bright_buffer);
+
+
+	std::string depth_path = folderPath + "_depth.tiff";
+	cv::imwrite(depth_path, depth_map);
+	std::cout << "save depth: " << depth_path << "\n";
+
+	std::string bright_path = folderPath + "_brightness.bmp";
+	cv::imwrite(bright_path, bright_map);
+	std::cout << "save brightness: " << bright_path << "\n";
+
+}
+
+void save_frame(int image_height, int image_width, int image_channels, float* depth_buffer, unsigned char* bright_buffer, const char* frame_path)
+{
+	std::string folderPath = frame_path;
+
+	cv::Mat depth_map(image_height, image_width, CV_32F, depth_buffer);
+	cv::Mat bright_map;
+
+	if (image_channels == 1)
+	{
+		bright_map = cv::Mat(image_height, image_width, CV_8U, bright_buffer);
+	}
+	else if (image_channels == 3)
+	{
+		bright_map = cv::Mat(image_height, image_width, CV_8UC3, bright_buffer);
+	}
 
 
 	std::string depth_path = folderPath + "_depth.tiff";
@@ -517,6 +581,107 @@ bool depth_to_point_cloud_map_use_intrinsic(cv::Mat& depth_input, cv::Mat& camer
 		}
 	}
 	pointCloudMat = points_map;
+	return true;
+}
+
+bool depth_to_point_cloud_map_use_intrinsic_and_texture_roi(cv::Mat& depth_input, cv::Mat& camera_intrinsic, cv::Mat& depth2color_map, cv::Mat& input_roi_mask, cv::Mat& pointCloudMat)
+{
+	std::cout << "depth_input.rows" << depth_input.rows << std::endl;
+	std::cout << "depth_input.cols" << depth_input.cols << std::endl;
+
+	cv::Mat points_map(depth_input.rows, depth_input.cols, CV_32FC3, cv::Scalar(0, 0, 0));
+
+
+	int width = depth_input.cols;
+	int height = depth_input.rows;
+	int rgb_height = input_roi_mask.rows;
+	int rgb_width = input_roi_mask.cols;
+
+
+	for (int row = 0; row < height; row += 1)
+	{
+		float* depth_input_ptr = depth_input.ptr<float>(row);
+		cv::Vec3f* pointsMapPtr = points_map.ptr<cv::Vec3f>(row);
+
+		for (int col = 0; col < width; col += 1)
+		{
+			int rgb_col = depth2color_map.at<ushort>(row, col * 2);
+			rgb_col = rgb_col > 0 && rgb_col < rgb_height ? rgb_col : 0;
+
+			int rgb_row = depth2color_map.at<ushort>(row, col * 2 + 1);
+			rgb_row = rgb_row > 0 && rgb_row < rgb_width ? rgb_row : 0;
+
+			if (depth_input_ptr[col] <= 0 || input_roi_mask.at<uchar>(rgb_row, rgb_col) != 255 || rgb_row == 0 || rgb_col == 0)
+			{
+				continue;
+			}
+
+			pointsMapPtr[col][0] = depth_input_ptr[col] * ((col - camera_intrinsic.at<float>(0, 2)) / camera_intrinsic.at<float>(0, 0));
+			pointsMapPtr[col][1] = depth_input_ptr[col] * ((row - camera_intrinsic.at<float>(1, 2)) / camera_intrinsic.at<float>(1, 1));
+			pointsMapPtr[col][2] = depth_input_ptr[col];
+		}
+	}
+	pointCloudMat = points_map;
+	return true;
+}
+
+bool convertDepthToRGBDepth(cv::Mat& depth_input, cv::Mat& depth_output, cv::Mat& l2rgb_r, cv::Mat& l2rgb_t, cv::Mat& camera_intrinsic, cv::Mat& rgb_camera_intrinsic)
+{
+	std::cout << "depth_input.rows" << depth_input.rows << std::endl;
+	std::cout << "depth_input.cols" << depth_input.cols << std::endl;
+	std::cout << "depth_output.rows" << depth_output.rows << std::endl;
+	std::cout << "depth_output.cols" << depth_output.cols << std::endl;
+
+	if (depth_output.cols == 0 || depth_output.rows == 0)
+	{
+		std::cout << "error depth_output size! " << std::endl;
+		return false;
+	}
+
+	int width = depth_input.cols;
+	int height = depth_input.rows;
+	int rgb_height = depth_output.rows;
+	int rgb_width = depth_output.cols;
+
+	float* l2rgb_r_ptr = l2rgb_r.ptr<float>(0, 0);
+	float* l2rgb_t_ptr = l2rgb_t.ptr<float>(0, 0);
+	float* rgb_camera_intrinsic_ptr = rgb_camera_intrinsic.ptr<float>(0, 0);
+
+#pragma omp parallel for
+	for (int row = 0; row < height; row += 1)
+	{
+		float* depth_input_ptr = depth_input.ptr<float>(row);
+		for (int col = 0; col < width; col += 1)
+		{
+			if (depth_input_ptr[col] < 1)
+			{
+				continue;
+			}
+
+			// 计算成点云
+			float z = depth_input_ptr[col];
+			float x = z * ((col - camera_intrinsic.at<float>(0, 2)) / camera_intrinsic.at<float>(0, 0));
+			float y = z * ((row - camera_intrinsic.at<float>(1, 2)) / camera_intrinsic.at<float>(1, 1));
+
+			// 然后旋转平移
+			float rgb_x = l2rgb_r_ptr[0] * x + l2rgb_r_ptr[1] * y + l2rgb_r_ptr[2] * z + l2rgb_t_ptr[0];
+			float rgb_y = l2rgb_r_ptr[3] * x + l2rgb_r_ptr[4] * y + l2rgb_r_ptr[5] * z + l2rgb_t_ptr[1];
+			float rgb_z = l2rgb_r_ptr[6] * x + l2rgb_r_ptr[7] * y + l2rgb_r_ptr[8] * z + l2rgb_t_ptr[2];
+
+			// 转换坐标系成为图像坐标
+			int rgb_u = (rgb_camera_intrinsic_ptr[0] * rgb_x) / rgb_z + rgb_camera_intrinsic_ptr[2] + 0.5;
+			int rgb_v = (rgb_camera_intrinsic_ptr[4] * rgb_y) / rgb_z + rgb_camera_intrinsic_ptr[5] + 0.5;
+
+			// 然后判断并且赋值保存
+			if (rgb_u > 0 && rgb_u < rgb_width && rgb_v > 0 && rgb_v < rgb_height)
+			{
+				if (depth_output.at<float>(rgb_v, rgb_u) < rgb_z)
+					depth_output.at<float>(rgb_v, rgb_u) = rgb_z;
+			}
+			
+		}
+	}
+
 	return true;
 }
 
@@ -876,6 +1041,32 @@ bool SaveBinPointsToPly(cv::Mat deep_mat, string path, cv::Mat texture_map)
 	return true;
 }
 
+bool convertDepthToColor(cv::Mat& deep_mat, cv::Mat& color_texture_map, cv::Mat& depth2color_map, cv::Mat& output_color_depth)
+{
+	std:cout << "convertDepthToColor" << std::endl;
+	output_color_depth = cv::Mat(deep_mat.size(), CV_8UC3);
+	for (int row = 0; row < deep_mat.rows; row += 1)
+	{
+		for (int col = 0; col < deep_mat.cols; col += 1)
+		{
+			if (deep_mat.at<float>(row, col) > 0)
+			{
+				int rgb_u = depth2color_map.at<unsigned short>(row, 2 * col);
+				int rgb_v = depth2color_map.at<unsigned short>(row, 2 * col + 1);
+				if (rgb_u < color_texture_map.cols && rgb_u > 0 && rgb_v < color_texture_map.cols && rgb_v > 0)
+				{
+					output_color_depth.at<cv::Vec3b>(row, col) = 
+						color_texture_map.at<cv::Vec3b>(rgb_v, rgb_u);
+				}
+
+			}
+		}
+	}
+	std::cout << "convertDepthToColor finish" << std::endl;
+
+	return true;
+}
+
 int get_frame_01(const char* ip, const char* frame_path)
 {
 	DfRegisterOnDropped(on_dropped);
@@ -988,6 +1179,453 @@ int get_frame_01_hdr(const char* ip, const char* frame_path)
 	delete[] brightness_buf;
 
 
+
+	return 1;
+}
+
+int get_frame_03(const char* ip, const char* frame_path)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnect(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+	int width, height;
+	int rgb_width, rgb_height;
+	DfGetCameraResolution(&width, &height);
+	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
+
+
+	ret = DfGetCalibrationParam(calibration_param_);
+
+	int image_size = width * height;
+	int rgb_image_size = rgb_width * rgb_height;
+
+	int depth_buf_size = image_size * 1 * 4;
+	float* depth_buf = (float*)(new char[depth_buf_size]);
+
+	int brightness_bug_size = image_size;
+	unsigned char* brightness_buf = new unsigned char[brightness_bug_size];
+
+	int color_brightness_buf_size = rgb_image_size * 3;
+	unsigned char* color_brightness_buf = new unsigned char[color_brightness_buf_size];
+
+	int depth2color_buf_size = image_size * sizeof(unsigned short) * 2;
+	unsigned short* depth2color_buf = (unsigned short*)(new unsigned char[depth2color_buf_size]);
+
+	ret = DfGetFrame03(depth_buf, depth_buf_size, brightness_buf, brightness_bug_size, color_brightness_buf, color_brightness_buf_size, depth2color_buf, depth2color_buf_size);
+
+	DfDisconnect(ip);
+
+	save_frame(height, width, depth_buf, brightness_buf, frame_path);
+
+	cv::Mat depthTemp(height, width, CV_32F, depth_buf);
+	cv::Mat brightnessTemp(height, width, CV_8U, brightness_buf);
+	cv::Mat colorBrightnessTemp(rgb_height, rgb_width, CV_8UC3, color_brightness_buf);
+	cv::Mat depthToColorTemp(height, width * 2, CV_16U, depth2color_buf);
+
+	//cv::Mat Q_mat(4, 4, CV_32F, Q_matrix);
+
+	cv::Mat camera_intrinsic_temp(3, 3, CV_32F, calibration_param_.camera_intrinsic);
+	cv::Mat rgb_camera_intrinsic_temp(3, 3, CV_32F, calibration_param_.rgb_camera_intrinsic);
+	cv::Mat rgb_distortion_temp(1, 5, CV_32F, calibration_param_.rgb_camera_distortion);
+
+	//depth_to_xyz(depthTemp, brightnessTemp, Q_mat, frame_path);
+	cv::Mat pointCloud;
+	//depth_to_point_cloud_map(depthTemp, Q_mat, pointCloud);
+	//depth_to_point_cloud_map_use_intrinsic(depthTemp, camera_intrinsic_temp, pointCloud);
+
+	cv::Mat input_roi_mask = cv::imread("./roi.bmp", 0);
+	//cv::imshow("input_roi_mask", input_roi_mask);
+	//cv::waitKey(0);
+
+	depth_to_point_cloud_map_use_intrinsic_and_texture_roi(depthTemp, camera_intrinsic_temp, depthToColorTemp, input_roi_mask, pointCloud);
+
+	cv::Mat color_depth;
+	convertDepthToColor(depthTemp, colorBrightnessTemp, depthToColorTemp, color_depth);
+
+	std::string folder_path = frame_path;
+	std::string pointcloud_path = folder_path + "_pointcloud.ply";
+	std::string rgb_brightness_path = folder_path + "_color.bmp";
+	std::string depth2color_path = folder_path + "_depth2color1.tiff";
+
+	SaveBinPointsToPly(pointCloud, pointcloud_path, color_depth);
+
+	std::cout << "save color_depth" << std::endl;
+	cv::imwrite(rgb_brightness_path, colorBrightnessTemp);
+	cv::imwrite(depth2color_path, color_depth);
+
+	delete[] depth_buf;
+	delete[] brightness_buf;
+	delete[] color_brightness_buf;
+	delete[] depth2color_buf;
+
+	return 1;
+}
+
+int get_frame_04_(const char* ip, const char* frame_path)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnect(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+	int width, height;
+	int rgb_width, rgb_height;
+	DfGetCameraResolution(&width, &height);
+	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
+
+
+	ret = DfGetCalibrationParam(calibration_param_);
+
+	int image_size = width * height;
+	int rgb_image_size = rgb_width * rgb_height;
+
+	int depth_buf_size = image_size * 1 * 4;
+	float* depth_buf = (float*)(new char[depth_buf_size]);
+
+	int brightness_bug_size = image_size;
+	unsigned char* brightness_buf = new unsigned char[brightness_bug_size];
+
+	int color_brightness_buf_size = rgb_image_size * 3;
+	unsigned char* color_brightness_buf = new unsigned char[color_brightness_buf_size];
+
+	int depth2color_buf_size = image_size * sizeof(unsigned short) * 2;
+	unsigned short* depth2color_buf = (unsigned short*)(new unsigned char[depth2color_buf_size]);
+
+	ret = DfGetFrame03(depth_buf, depth_buf_size, brightness_buf, brightness_bug_size, color_brightness_buf, color_brightness_buf_size, depth2color_buf, depth2color_buf_size);
+
+	DfDisconnect(ip);
+
+	save_frame(height, width, depth_buf, brightness_buf, frame_path);
+
+	/****************************保存点云*********************************/
+	// 先转换得到正确的RGB坐标系需要原始深度图，RGB resolution，RGB的内参和旋转
+	cv::Mat camera_intrinsic_temp(3, 3, CV_32F, calibration_param_.camera_intrinsic);
+	cv::Mat rgb_camera_intrinsic_temp(3, 3, CV_32F, calibration_param_.rgb_camera_intrinsic);
+	cv::Mat l2rgb_r_temp(3, 3, CV_32F, calibration_param_.rotation_matrix);
+	cv::Mat l2rgb_t_temp(3, 1, CV_32F, calibration_param_.translation_matrix);
+
+
+
+	cv::Mat depthTemp(height, width, CV_32F, depth_buf);
+	cv::Mat brightnessTemp(height, width, CV_8U, brightness_buf);
+	cv::Mat colorBrightnessTemp(rgb_height, rgb_width, CV_8UC3, color_brightness_buf);
+	cv::Mat colorBrightnessResult;
+	cv::Mat depthToColorTemp(height, width * 2, CV_16U, depth2color_buf);
+
+	cv::resize(colorBrightnessTemp, colorBrightnessResult, cv::Size(rgb_width / 2, rgb_height / 2));
+	cv::Mat RGBDepthTemp(colorBrightnessResult.size(), CV_32F);
+
+	// 然后对内参进行修正
+	rgb_camera_intrinsic_temp.at<float>(0, 0) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(1, 1) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(0, 2) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(1, 2) /= 2.;
+
+	convertDepthToRGBDepth(depthTemp, RGBDepthTemp, l2rgb_r_temp, l2rgb_t_temp, camera_intrinsic_temp, rgb_camera_intrinsic_temp);
+
+	// 转换深度图的坐标系
+
+	/****************************保存点云*********************************/
+
+	cv::Mat pointCloud;
+
+	depth_to_point_cloud_map_use_intrinsic(RGBDepthTemp, rgb_camera_intrinsic_temp, pointCloud);
+
+	std::string folder_path = frame_path;
+	std::string pointcloud_path = folder_path + "_pointcloud.ply";
+	std::string rgb_brightness_path = folder_path + "_color.bmp";
+	std::string rgb_depth_path = folder_path + "_depth_of_rgb_camera.tiff";
+	std::string depth2color_path = folder_path + "_depth2color1.tiff";
+
+	std::cout << "pointCloud size" << pointCloud.size() << std::endl;
+
+	SaveBinPointsToPly(pointCloud, pointcloud_path, colorBrightnessResult);
+
+	cv::imwrite(rgb_brightness_path, colorBrightnessResult);
+	cv::imwrite(rgb_depth_path, RGBDepthTemp);
+
+	delete[] depth_buf;
+	delete[] brightness_buf;
+	delete[] color_brightness_buf;
+	delete[] depth2color_buf;
+
+	return 1;
+}
+
+int get_frame_04(const char* ip, const char* frame_path)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnect(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+	int width, height;
+	int rgb_width, rgb_height;
+	DfGetCameraResolution(&width, &height);
+	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
+
+
+	ret = DfGetCalibrationParam(calibration_param_);
+
+	int image_size = width * height;
+	int rgb_image_size = rgb_width * rgb_height;
+
+	int depth_buf_size = image_size * 1 * 4;
+	float* depth_buf = (float*)(new char[depth_buf_size]);
+
+	int brightness_bug_size = image_size;
+	unsigned char* brightness_buf = new unsigned char[brightness_bug_size];
+
+	int color_brightness_buf_size = rgb_image_size * 3;
+	unsigned char* color_brightness_buf = new unsigned char[color_brightness_buf_size];
+
+	cv::Mat depthTemp(height, width, CV_32F, depth_buf);
+	cv::Mat brightnessTemp(height, width, CV_8U, brightness_buf);
+	cv::Mat colorBrightnessTemp(rgb_height, rgb_width, CV_8UC3, color_brightness_buf);
+	cv::Mat colorBrightnessResult(rgb_height / 2, rgb_width / 2, CV_8UC3);
+	cv::Mat RGBDepthTemp(colorBrightnessResult.size(), CV_32F, cv::Scalar(0));
+
+	ret = DfGetFrame04(depth_buf, depth_buf_size, brightness_buf, brightness_bug_size, color_brightness_buf, color_brightness_buf_size, colorBrightnessResult.data, colorBrightnessResult.rows * colorBrightnessResult.cols * 3, (float*)RGBDepthTemp.data, RGBDepthTemp.rows * RGBDepthTemp.cols);
+
+	DfDisconnect(ip);
+
+	save_frame(height, width, depth_buf, brightness_buf, frame_path);
+
+	/****************************保存点云*********************************/
+	// 先转换得到正确的RGB坐标系需要原始深度图，RGB resolution，RGB的内参和旋转
+	cv::Mat camera_intrinsic_temp(3, 3, CV_32F, calibration_param_.camera_intrinsic);
+	cv::Mat rgb_camera_intrinsic_temp(3, 3, CV_32F, calibration_param_.rgb_camera_intrinsic);
+	cv::Mat l2rgb_r_temp(3, 3, CV_32F, calibration_param_.rotation_matrix);
+	cv::Mat l2rgb_t_temp(3, 1, CV_32F, calibration_param_.translation_matrix);
+
+
+
+	//cv::Mat depthTemp(height, width, CV_32F, depth_buf);
+	//cv::Mat brightnessTemp(height, width, CV_8U, brightness_buf);
+	//cv::Mat colorBrightnessTemp(rgb_height, rgb_width, CV_8UC3, color_brightness_buf);
+	//cv::Mat colorBrightnessResult;
+	//cv::Mat depthToColorTemp(height, width * 2, CV_16U, depth2color_buf);
+
+	//cv::resize(colorBrightnessTemp, colorBrightnessResult, cv::Size(rgb_width / 2, rgb_height / 2));
+
+	// 然后对内参进行修正
+	rgb_camera_intrinsic_temp.at<float>(0, 0) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(1, 1) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(0, 2) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(1, 2) /= 2.;
+
+	//convertDepthToRGBDepth(depthTemp, RGBDepthTemp, l2rgb_r_temp, l2rgb_t_temp, camera_intrinsic_temp, rgb_camera_intrinsic_temp);
+
+	// 转换深度图的坐标系
+
+	/****************************保存点云*********************************/
+
+	cv::Mat pointCloud;
+
+	depth_to_point_cloud_map_use_intrinsic(RGBDepthTemp, rgb_camera_intrinsic_temp, pointCloud);
+
+	std::string folder_path = frame_path;
+	std::string pointcloud_path = folder_path + "_pointcloud.ply";
+	std::string rgb_brightness_path = folder_path + "_color.bmp";
+	std::string rgb_depth_path = folder_path + "_depth_of_rgb_camera.tiff";
+	std::string depth2color_path = folder_path + "_depth2color1.tiff";
+
+	std::cout << "pointCloud size" << pointCloud.size() << std::endl;
+
+	SaveBinPointsToPly(pointCloud, pointcloud_path, colorBrightnessResult);
+
+	cv::imwrite(rgb_brightness_path, colorBrightnessResult);
+	cv::imwrite(rgb_depth_path, RGBDepthTemp);
+
+	delete[] depth_buf;
+	delete[] brightness_buf;
+	delete[] color_brightness_buf;
+
+	return 1;
+}
+
+int get_frame_user(const char* ip, const char* frame_path)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnect(ip);
+	if (ret != DF_SUCCESS)
+	{
+		return 0;
+	}
+
+	DfSelectCamera(LumosCameraSelect::RGBCamera);
+
+	int width, height, channels;
+	DfGetCameraResolution(&width, &height);
+	DfGetCameraChannels(&channels);
+
+	CalibrationParam calib_param;
+	ret = DfGetCalibrationParam(&calib_param);
+
+	int image_size = width * height;
+
+	std::cout << "width: " << width << std::endl;
+	std::cout << "height: " << height << std::endl;
+
+	int depth_buf_size = image_size * 1 * 4;
+	float* depth_buf = (float*)(new char[depth_buf_size]);
+
+	int brightness_bug_size = image_size * channels;
+	unsigned char* brightness_buf = new unsigned char[brightness_bug_size];
+
+	int pointcloud_buf_size = image_size * 3 * 4;
+	float* pointcloud_buf = (float*)(new char[pointcloud_buf_size]);
+
+	cv::Mat depthTemp(height, width, CV_32F, depth_buf);
+	cv::Mat brightnessTemp;
+
+	if (channels == 1)
+	{
+		brightnessTemp = cv::Mat(height, width, CV_8U, brightness_buf);
+	}
+	else if (channels == 3)
+	{
+		brightnessTemp = cv::Mat(height, width, CV_8UC3, brightness_buf);
+	}
+
+	int num = 3;
+	int led_param[5] = { 1023,1023,1023,1023,1023 };
+	int exposure_param[5] = { 25000, 35000, 45000, 60000, 80000 };
+
+	//设置多曝光参数
+	ret = DfSetParamMixedHdr(num, exposure_param, led_param);
+
+	char time_stamp[50];
+	ret = DfCaptureData(3, time_stamp);
+
+	DfGetBrightnessData(brightness_buf);
+	DfGetDepthDataFloat(depth_buf);
+	DfGetPointcloudData(pointcloud_buf);
+
+	DfDisconnect(ip);
+
+	save_frame(height, width, channels, depth_buf, brightness_buf, frame_path);
+
+	/****************************保存点云*********************************/
+	// 先转换得到正确的RGB坐标系需要原始深度图，RGB resolution，RGB的内参和旋转
+	cv::Mat camera_intrinsic_temp(3, 3, CV_32F, calib_param.intrinsic);
+
+	std::cout << "camera_intrinsic_temp: " << camera_intrinsic_temp << std::endl;
+
+	/****************************保存点云*********************************/
+
+	cv::Mat pointCloud(height, width, CV_32FC3, pointcloud_buf);
+
+	std::string folder_path = frame_path;
+	std::string pointcloud_path = folder_path + "_pointcloud.ply";
+	std::string rgb_brightness_path = folder_path + "_color.bmp";
+	std::string rgb_depth_path = folder_path + "_depth_of_rgb_camera.tiff";
+	std::string depth2color_path = folder_path + "_depth2color1.tiff";
+
+	SaveBinPointsToPly(pointCloud, pointcloud_path, brightnessTemp);
+
+	delete[] depth_buf;
+	delete[] brightness_buf;
+
+	return 1;
+}
+
+int get_frame_04_hdr(const char* ip, const char* frame_path)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnect(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+	int width, height;
+	int rgb_width, rgb_height;
+	DfGetCameraResolution(&width, &height);
+	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
+
+
+	ret = DfGetCalibrationParam(calibration_param_);
+
+	int image_size = width * height;
+	int rgb_image_size = rgb_width * rgb_height;
+
+	int depth_buf_size = image_size * 1 * 4;
+	float* depth_buf = (float*)(new char[depth_buf_size]);
+
+	int brightness_bug_size = image_size;
+	unsigned char* brightness_buf = new unsigned char[brightness_bug_size];
+
+	int color_brightness_buf_size = rgb_image_size * 3;
+	unsigned char* color_brightness_buf = new unsigned char[color_brightness_buf_size];
+
+	cv::Mat depthTemp(height, width, CV_32F, depth_buf);
+	cv::Mat brightnessTemp(height, width, CV_8U, brightness_buf);
+	cv::Mat colorBrightnessTemp(rgb_height, rgb_width, CV_8UC3, color_brightness_buf);
+	cv::Mat colorBrightnessResult(rgb_height / 2, rgb_width / 2, CV_8UC3);
+	cv::Mat RGBDepthTemp(colorBrightnessResult.size(), CV_32F, cv::Scalar(0));
+
+	int num = 3;
+	int led_param[5] = { 1023,1023,1023,1023,1023 };
+	int exposure_param[5] = { 25000, 35000, 45000, 60000, 80000 };
+
+	//设置多曝光参数
+	ret = DfSetParamMixedHdr(num, exposure_param, led_param);
+
+	ret = DfGetFrame04HDR(depth_buf, depth_buf_size, brightness_buf, brightness_bug_size, color_brightness_buf, color_brightness_buf_size, colorBrightnessResult.data, colorBrightnessResult.rows * colorBrightnessResult.cols * 3, (float*)RGBDepthTemp.data, RGBDepthTemp.rows * RGBDepthTemp.cols);
+
+	DfDisconnect(ip);
+
+	save_frame(height, width, depth_buf, brightness_buf, frame_path);
+
+	/****************************保存点云*********************************/
+	// 先转换得到正确的RGB坐标系需要原始深度图，RGB resolution，RGB的内参和旋转
+	cv::Mat camera_intrinsic_temp(3, 3, CV_32F, calibration_param_.camera_intrinsic);
+	cv::Mat rgb_camera_intrinsic_temp(3, 3, CV_32F, calibration_param_.rgb_camera_intrinsic);
+	cv::Mat l2rgb_r_temp(3, 3, CV_32F, calibration_param_.rotation_matrix);
+	cv::Mat l2rgb_t_temp(3, 1, CV_32F, calibration_param_.translation_matrix);
+
+	// 然后对内参进行修正
+	rgb_camera_intrinsic_temp.at<float>(0, 0) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(1, 1) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(0, 2) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(1, 2) /= 2.;
+
+	/****************************保存点云*********************************/
+
+	cv::Mat pointCloud;
+
+	depth_to_point_cloud_map_use_intrinsic(RGBDepthTemp, rgb_camera_intrinsic_temp, pointCloud);
+
+	std::string folder_path = frame_path;
+	std::string pointcloud_path = folder_path + "_pointcloud.ply";
+	std::string rgb_brightness_path = folder_path + "_color.bmp";
+	std::string rgb_depth_path = folder_path + "_depth_of_rgb_camera.tiff";
+	std::string depth2color_path = folder_path + "_depth2color1.tiff";
+
+	std::cout << "pointCloud size" << pointCloud.size() << std::endl;
+
+	SaveBinPointsToPly(pointCloud, pointcloud_path, colorBrightnessResult);
+
+	cv::imwrite(rgb_brightness_path, colorBrightnessResult);
+	cv::imwrite(rgb_depth_path, RGBDepthTemp);
+
+	delete[] depth_buf;
+	delete[] brightness_buf;
+	delete[] color_brightness_buf;
 
 	return 1;
 }

@@ -66,6 +66,36 @@ void undistortPoint(double x, double y,
 	return;
 }
 
+void distortPoint(double fx, double fy, double u0, double v0, double k1, double k2, double k3, double p1, double p2,
+	float inputU, float inputV, float& outputU, float& outputV)
+{
+	//float fx = calibration_param_.camera_intrinsic[0];
+	//float fy = calibration_param_.camera_intrinsic[4];
+
+	//float u0 = calibration_param_.camera_intrinsic[2];
+	//float v0 = calibration_param_.camera_intrinsic[5];
+
+
+	//float k1 = calibration_param_.camera_distortion[0];
+	//float k2 = calibration_param_.camera_distortion[1];
+	//float p1 = calibration_param_.camera_distortion[2];
+	//float p2 = calibration_param_.camera_distortion[3];
+	//float k3 = calibration_param_.camera_distortion[4];
+	float k4 = 0;
+	float k5 = 0;
+	float k6 = 0;
+
+	float x = (inputU - u0) / fx, y = (inputV - v0) / fy;
+
+	float x2 = x * x, y2 = y * y;
+	float r2 = x2 + y2, _2xy = 2 * x * y;
+	float kr = (1 + ((k3 * r2 + k2) * r2 + k1) * r2) / (1 + ((k6 * r2 + k5) * r2 + k4) * r2);
+	// 归一化坐标转化为图像坐标
+	outputU = fx * (x * kr + p1 * _2xy + p2 * (r2 + 2 * x2)) + u0;
+	outputV = fy * (y * kr + p1 * (r2 + 2 * y2) + p2 * _2xy) + v0;
+
+}
+
 void triangulation(double x_norm_L, double y_norm_L,
 	double x_norm_R, double y_norm_R,
 	double* R, double* T,

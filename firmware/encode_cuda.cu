@@ -668,6 +668,43 @@ __global__ void kernel_dispaty_to_depth(int width, int height, float* d_in_Q, fl
 	}
 }
 
+__global__ void kernel_dispaty_to_depth_and_color_map(int width, int height, int rgb_width, int rgb_height, float* d_in_Q, float* d_in_rgb_intrinsic, float* d_in_l2rgb_R, float* d_in_l2rgb_T,float* d_in_disparty, float* d_out_depth_map, ushort2* d_out_depth_color_map, unsigned char* disparty_mask)
+{
+	const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	const unsigned int idy = blockIdx.y * blockDim.y + threadIdx.y;
+	const unsigned int offset = idy * width + idx;
+
+	if (idx < width && idy < height && disparty_mask[offset] == 255)
+	{
+		d_out_depth_color_map[offset] = {0, 0};
+
+		float f = d_in_Q[11];
+		float w = d_in_Q[14] * d_in_disparty[offset] + d_in_Q[15];
+
+		if (w > 0)
+		{
+			float x = ((float)idx + d_in_Q[3]) / w;
+			float y = ((float)idy + d_in_Q[7]) / w;
+			float z = f / w;
+			d_out_depth_map[offset] = z;
+
+			float rgb_x = d_in_l2rgb_R[0] * x + d_in_l2rgb_R[1] * y + d_in_l2rgb_R[2] * z + d_in_l2rgb_T[0];
+			float rgb_y = d_in_l2rgb_R[3] * x + d_in_l2rgb_R[4] * y + d_in_l2rgb_R[5] * z + d_in_l2rgb_T[1];
+			float rgb_z = d_in_l2rgb_R[6] * x + d_in_l2rgb_R[7] * y + d_in_l2rgb_R[8] * z + d_in_l2rgb_T[2];
+
+			ushort2 rgb_uv;
+			rgb_uv.x = (d_in_rgb_intrinsic[0] * rgb_x) / rgb_z + d_in_rgb_intrinsic[2];
+			rgb_uv.y = (d_in_rgb_intrinsic[4] * rgb_y) / rgb_z + d_in_rgb_intrinsic[5];
+
+			if (rgb_uv.x > 0 && rgb_uv.x < rgb_width && rgb_uv.y > 0 && rgb_uv.y < rgb_height)
+			{
+				d_out_depth_color_map[offset] = rgb_uv;
+			}
+
+		}
+	}
+}
+
 __global__ void kernel_depth_to_pointcloud(int width, int height, float* d_in_Q, float* d_in_depth_map, float* d_out_pointcloud_map)
 {
 	const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;

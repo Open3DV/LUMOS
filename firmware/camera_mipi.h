@@ -57,7 +57,6 @@ protected:
 
 /* Configurations below can be overrided by cmdline */
 static int      CAPTURE_FPS   = 10;
-static uint32_t SENSOR_MODE   = 0;
 static Size2D<uint32_t> PREVIEW_SIZE (1632*2, 1232*2);
 
 #define JPEG_BUFFER_SIZE    (CAPTURE_SIZE.area() * 3 / 2)
