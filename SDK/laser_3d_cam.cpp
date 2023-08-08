@@ -699,6 +699,7 @@ DF_SDK_API int  DfGetCameraResolution(int* width, int* height)
 	{
 		return DF_FAILED;
 	}
+	return DF_SUCCESS;
 }
 
 DF_SDK_API int DfGetGrayCameraResolution(int* width, int* height)
