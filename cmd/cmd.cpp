@@ -1078,7 +1078,7 @@ int get_frame_01(const char* ip, const char* frame_path)
 	}
 
 	int width, height;
-	DfGetCameraResolution(&width, &height);
+	DfGetGrayCameraResolution(&width, &height);
 
 
 	ret = DfGetCalibrationParam(calibration_param_);
@@ -1136,7 +1136,7 @@ int get_frame_01_hdr(const char* ip, const char* frame_path)
 	}
 
 	int width, height;
-	DfGetCameraResolution(&width, &height);
+	DfGetGrayCameraResolution(&width, &height);
 
 
 	ret = DfGetCalibrationParam(calibration_param_);
@@ -1195,7 +1195,7 @@ int get_frame_03(const char* ip, const char* frame_path)
 
 	int width, height;
 	int rgb_width, rgb_height;
-	DfGetCameraResolution(&width, &height);
+	DfGetGrayCameraResolution(&width, &height);
 	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
 
 
@@ -1278,7 +1278,7 @@ int get_frame_04_(const char* ip, const char* frame_path)
 
 	int width, height;
 	int rgb_width, rgb_height;
-	DfGetCameraResolution(&width, &height);
+	DfGetGrayCameraResolution(&width, &height);
 	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
 
 
@@ -1372,7 +1372,7 @@ int get_frame_04(const char* ip, const char* frame_path)
 
 	int width, height;
 	int rgb_width, rgb_height;
-	DfGetCameraResolution(&width, &height);
+	DfGetGrayCameraResolution(&width, &height);
 	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
 
 
@@ -1468,7 +1468,7 @@ int get_frame_user(const char* ip, const char* frame_path)
 	DfSelectCamera(LumosCameraSelect::RGBCamera);
 
 	int width, height, channels;
-	DfGetCameraResolution(&width, &height);
+	DfGetGrayCameraResolution(&width, &height);
 	DfGetCameraChannels(&channels);
 
 	CalibrationParam calib_param;
@@ -1554,7 +1554,7 @@ int get_frame_04_hdr(const char* ip, const char* frame_path)
 
 	int width, height;
 	int rgb_width, rgb_height;
-	DfGetCameraResolution(&width, &height);
+	DfGetGrayCameraResolution(&width, &height);
 	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
 
 
@@ -1641,7 +1641,7 @@ int get_frame_test(const char* ip, const char* frame_path)
 	}
 
 	int width, height;
-	DfGetCameraResolution(&width, &height);
+	DfGetGrayCameraResolution(&width, &height);
 
 
 	ret = DfGetCalibrationParam(calibration_param_);
@@ -1850,7 +1850,7 @@ int get_raw_01(const char* ip, const char* raw_image_dir)
 	}
 
 	int width, height;
-	DfGetCameraResolution(&width, &height);
+	DfGetGrayCameraResolution(&width, &height);
 
 	int capture_num = 28;
 
@@ -1879,7 +1879,7 @@ int get_raw_02(const char* ip, const char* raw_image_dir)
 	}
 
 	int width, height;
-	DfGetCameraResolution(&width, &height);
+	DfGetGrayCameraResolution(&width, &height);
 
 	int capture_num = 28;
 
@@ -1910,7 +1910,7 @@ int get_raw_03(const char* ip, const char* raw_image_dir)
 	int width, height;
 	int rgb_width, rgb_height;
 
-	DfGetCameraResolution(&width, &height);
+	DfGetGrayCameraResolution(&width, &height);
 	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
 
 	int capture_num = 28;
