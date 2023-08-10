@@ -246,7 +246,7 @@ int handle_cmd_get_raw_01(int client_sock)
         return DF_FAILED;
     }
 
-    int image_num = 28;
+    int image_num = 36;
 
     int width = 0;
     int height = 0;
@@ -285,7 +285,7 @@ int handle_cmd_get_raw_02_16bit(int client_sock)
         return DF_FAILED;
     }
 
-    int image_num = 28;
+    int image_num = 36;
 
     int width = 0;
     int height = 0;
@@ -324,7 +324,7 @@ int handle_cmd_get_raw_03(int client_sock)
         return DF_FAILED;
     }
 
-    int image_num = 28;
+    int image_num = 36;
 
     int width = 0;
     int height = 0;
@@ -373,8 +373,8 @@ int handle_cmd_get_frame_01_parallel(int client_sock)
     unsigned char* brightness = new unsigned char[brightness_buf_size];
 
 
-    LOG(INFO) << "captureFrame01";
-    ret = scan3d_.captureFrame01();
+    LOG(INFO) << "captureFrame08";
+    ret = scan3d_.captureFrame08();
     if (DF_SUCCESS != ret)
     {
         LOG(ERROR) << "captureFrame01 code: " << ret;
@@ -664,14 +664,14 @@ int handle_cmd_get_frame_01_hdr_parallel(int client_sock)
     unsigned char* brightness = new unsigned char[brightness_buf_size];
 
 
-    LOG(INFO) << "captureFrame01HDR";
-    ret = scan3d_.captureFrame01MixedHDR();
+    LOG(INFO) << "captureFrame08HDR";
+    ret = scan3d_.captureFrame08MixedHDR();
     if (DF_SUCCESS != ret)
     {
-        LOG(ERROR) << "captureFrame01HDR code: " << ret;
+        LOG(ERROR) << "captureFrame08HDR code: " << ret;
     }
 
-    LOG(INFO) << "Reconstruct captureFrame01HDR Finished!";
+    LOG(INFO) << "Reconstruct captureFrame08HDR Finished!";
     scan3d_.copyBrightnessData(brightness);
     scan3d_.copyDepthData(depth_map);
 

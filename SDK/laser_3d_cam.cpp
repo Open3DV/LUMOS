@@ -1673,7 +1673,7 @@ DF_SDK_API int DfGetFrameTest(float* depth, int depth_buf_size,
 
 DF_SDK_API int DfGetCameraRawData01(unsigned char* raw, int raw_buf_size)
 {
-	int img_num = 28;
+	int img_num = 36;
 	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
 	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
 	{
@@ -1729,7 +1729,7 @@ DF_SDK_API int DfGetCameraRawData01(unsigned char* raw, int raw_buf_size)
 
 DF_SDK_API int DfGetCameraRawData02(unsigned short* raw, int raw_buf_size)
 {
-	int img_num = 28;
+	int img_num = 36;
 	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
 	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
 	{
@@ -1785,7 +1785,7 @@ DF_SDK_API int DfGetCameraRawData02(unsigned short* raw, int raw_buf_size)
 
 DF_SDK_API int DfGetCameraRawData03(unsigned char* raw, int raw_buf_size)
 {
-	int img_num = 28;
+	int img_num = 36;
 	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
 	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
 	{

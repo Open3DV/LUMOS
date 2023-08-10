@@ -29,6 +29,8 @@ __global__ void kernel_4_step_phase_shift_8bit(int width, int height, unsigned c
 
 __global__ void kernel_4_step_phase_shift_16bit(int width, int height, unsigned short* d_in_0, unsigned short* d_in_1, unsigned short* d_in_2, unsigned short* d_in_3, unsigned char* d_out, unsigned char* mask_noise, unsigned short* decode_threshold, float d_in_confidence);
 
+__global__ void kernel_8_step_phase_shift_16bit(int width, int height, unsigned short* d_in_0, unsigned short* d_in_1, unsigned short* d_in_2, unsigned short* d_in_3, unsigned short* d_in_4, unsigned short* d_in_5, unsigned short* d_in_6, unsigned short* d_in_7, unsigned char* d_out, unsigned char* mask_noise, unsigned short* decode_threshold, float d_in_confidence);
+
 __global__ void kernel_code_rectify_8bit(int width, int height, unsigned char* d_in_code, unsigned char* d_in_phase, unsigned char* mask_noise);
 
 __global__ void kernel_code_phase_unwrap_8bit(int width, int height, unsigned char* d_in_code, unsigned char* d_in_phase, unsigned short* d_out_unwrap, unsigned char* mask_noise);
@@ -74,5 +76,7 @@ __global__ void kernel_filter_radius_outlier_removal(uint32_t img_height, uint32
 __global__ void kernel_removal_points_base_mask(uint32_t img_height, uint32_t img_width,float* const point_cloud_map,float* const depth_map,uchar* remove_mask);
 
 __global__ void kernel_fix_unwrap_phase(int width, int height, unsigned short* d_in_unwrap_phase);
+
+__global__ void kernel_fix_eight_step_unwrap_phase(int width, int height, unsigned short* d_in_unwrap_phase);
 
 #endif

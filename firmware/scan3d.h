@@ -53,6 +53,10 @@ public:
 
     int captureFrame04MixedHDR();
 
+    int captureFrame08();
+
+    int captureFrame08MixedHDR();
+
     int captureFrame03();
 
     int captureFrame01HDR();
@@ -163,8 +167,8 @@ private:
 
 
 
-    unsigned short* host_img_left_[14];
-    unsigned short* host_img_right_[14];
+    unsigned short* host_img_left_[18];
+    unsigned short* host_img_right_[18];
 
 };
 

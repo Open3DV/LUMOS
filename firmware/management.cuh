@@ -17,7 +17,7 @@
 #include "merge_hdr.cuh"
 
 
-#define MAX_PATTERNS_NUMBER 14
+#define MAX_PATTERNS_NUMBER 18
 #define MAX_GRAY_CODE_NUMBER 8
 #define D_HDR_MAX_NUM 5
 
@@ -171,6 +171,8 @@ bool cuda_four_step_phase_shift(cudaStream_t stream_left, cudaStream_t stream_ri
 
 bool cuda_four_step_phase_shift_16bit(cudaStream_t stream_left, cudaStream_t stream_right);
 
+bool cuda_eight_step_phase_shift_16bit(cudaStream_t stream_left, cudaStream_t stream_right);
+
 bool cuda_four_step_phase_shift(cudaStream_t stream_left, cudaStream_t stream_right, int serial_flag);
 
 bool cuda_decode_gray_code_one_by_one(int serial_flag);
@@ -208,6 +210,8 @@ void cuda_remove_points_base_radius_filter(float dot_spacing,float radius,int th
 bool cuda_set_param_confidence(float val);
 
 void cuda_fix_four_step_code_shift(int serial_flag);
+
+void cuda_fix_eight_step_code_shift(int serial_flag);
 
 bool cuda_copy_result_to_hdr(int serial_flag,int brigntness_serial);
 

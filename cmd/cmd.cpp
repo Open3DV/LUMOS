@@ -1852,7 +1852,7 @@ int get_raw_01(const char* ip, const char* raw_image_dir)
 	int width, height;
 	DfGetGrayCameraResolution(&width, &height);
 
-	int capture_num = 28;
+	int capture_num = 36;
 
 	int image_size = width * height;
 
@@ -1881,7 +1881,7 @@ int get_raw_02(const char* ip, const char* raw_image_dir)
 	int width, height;
 	DfGetGrayCameraResolution(&width, &height);
 
-	int capture_num = 28;
+	int capture_num = 36;
 
 	int image_size = width * height * sizeof(unsigned short);
 
@@ -1913,7 +1913,7 @@ int get_raw_03(const char* ip, const char* raw_image_dir)
 	DfGetGrayCameraResolution(&width, &height);
 	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
 
-	int capture_num = 28;
+	int capture_num = 36;
 
 	int image_size = width * height;
 	int rgb_image_size = rgb_width * rgb_height * 3;

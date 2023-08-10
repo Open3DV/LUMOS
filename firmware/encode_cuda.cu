@@ -132,6 +132,58 @@ __global__ void kernel_4_step_phase_shift_16bit(int width, int height, unsigned 
 	}
 }
 
+__global__ void kernel_8_step_phase_shift_16bit(int width, int height, unsigned short* d_in_0, unsigned short* d_in_1, unsigned short* d_in_2, unsigned short* d_in_3, unsigned short* d_in_4, unsigned short* d_in_5, unsigned short* d_in_6, unsigned short* d_in_7, unsigned char* d_out, unsigned char* mask_noise, unsigned short* decode_threshold, float d_in_confidence)
+{
+	const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	const unsigned int idy = blockIdx.y * blockDim.y + threadIdx.y;
+	const unsigned int offset = idy * width + idx;
+
+	if (idx < width && idy < height && !(mask_noise[offset]))
+	{
+		int over_num = 0;
+
+		over_num = (d_in_0[offset] >= 4085) + (d_in_1[offset] >= 4085) + (d_in_2[offset] >= 4085) + (d_in_3[offset] >= 4085);
+
+
+
+		// float a = (float)d_in_2[offset] - (float)d_in_0[offset];
+		// float b = (float)d_in_3[offset] - (float)d_in_1[offset];
+
+		// 八步相移
+		// float aa = Im*sin(2*m*CV_PI / N);
+		// float bb = Im*cos(2*m*CV_PI / N)
+		// float sin_0_4_pi = 0;
+		// float sin_1_4_pi = 0.7071067811F;
+		// float sin_2_4_pi = 1.F;
+		// float sin_3_4_pi = 0.7071067811F;
+		// float sin_4_4_pi = 0;
+		// float sin_5_4_pi = -0.7071067811F;
+		// float sin_6_4_pi = -1.F;
+		// float sin_7_4_pi = -0.7071067811F;
+
+		// float cos_0_4_pi = 1.F;
+		// float cos_1_4_pi = 0.7071067811F;
+		// float cos_2_4_pi = 0;
+		// float cos_3_4_pi = -0.7071067811F;
+		// float cos_4_4_pi = -1.F;
+		// float cos_5_4_pi = -0.7071067811F;
+		// float cos_6_4_pi = 0;
+		// float cos_7_4_pi = 0.7071067811F;
+		
+
+		float a = d_in_1[offset]*0.7071067811F+ d_in_2[offset]+ d_in_3[offset]*0.7071067811F- d_in_5[offset]*(0.7071067811F)- d_in_6[offset]- d_in_7[offset]*0.7071067811F;
+		float b = d_in_0[offset] + d_in_1[offset]*0.7071067811F - d_in_3[offset]*0.7071067811F - d_in_4[offset] - d_in_5[offset]*0.7071067811F + d_in_7[offset]*0.7071067811F;
+
+		float r = sqrt(a * a + b * b);
+
+		decode_threshold[offset] = ((int)d_in_0[offset] + (int)d_in_1[offset] + (int)d_in_2[offset] + (int)d_in_3[offset] + (int)d_in_4[offset] + (int)d_in_5[offset] + (int)d_in_6[offset] + (int)d_in_7[offset]) / 8;
+
+		d_out[offset] = (CV_PI - atan2(a, b)) * 40.7436654315252f * (r >= d_in_confidence) * (over_num < 2);
+		d_in_3[offset] = d_out[offset];
+		mask_noise[offset] = 255 * ((over_num > 4) || (r < d_in_confidence));
+
+	}
+}
 
 __global__ void kernel_code_rectify_8bit(int width, int height, unsigned char* d_in_code, unsigned char* d_in_phase, unsigned char* mask_noise)
 {
@@ -1016,6 +1068,7 @@ __global__ void kernel_removal_points_base_mask(uint32_t img_height, uint32_t im
 }
 
 #define STEP_FIX_PHASE 64
+#define EIGHT_STEP_FIX_PHASE 32
 
 __global__ void kernel_fix_unwrap_phase(int width, int height, unsigned short* d_in_unwrap_phase)
 {
@@ -1053,6 +1106,53 @@ __global__ void kernel_fix_unwrap_phase(int width, int height, unsigned short* d
 					if (d_in_unwrap_phase[offset + i] < phase_now && d_in_unwrap_phase[offset + i] > phase_before)
 					{
 						d_in_unwrap_phase[offset + i] = phase_before + STEP_FIX_PHASE * ((i - pixel_before)/(pixel_now - pixel_before));
+					}
+				}
+
+			}
+		}
+
+	}
+
+
+}
+
+__global__ void kernel_fix_eight_step_unwrap_phase(int width, int height, unsigned short* d_in_unwrap_phase)
+{
+	// 每次读取的数据是一行的数据，后续需要优化
+	const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+	const unsigned int idy = blockIdx.y * blockDim.y + threadIdx.y; 
+
+	int offset_y = idy * blockDim.x * gridDim.x + idx;
+	int offset = offset_y * width;
+
+	float pixel_before = 1.;
+	float pixel_now = 1.;
+	float phase_before = 0.;
+	float phase_now = 0.;
+
+	if (offset_y < height)
+	{
+		for (int col = 1; col < width - 1; col += 1)
+		{
+			if (d_in_unwrap_phase[offset + col] < d_in_unwrap_phase[offset + col + 1] && (d_in_unwrap_phase[offset + col + 1] / EIGHT_STEP_FIX_PHASE - d_in_unwrap_phase[offset + col] / EIGHT_STEP_FIX_PHASE) == 1)
+			{
+				pixel_before = pixel_now;
+				phase_before = phase_now;
+				phase_now = d_in_unwrap_phase[offset + col + 1] / EIGHT_STEP_FIX_PHASE * EIGHT_STEP_FIX_PHASE;
+
+        		pixel_now = col + ((float)(phase_now - d_in_unwrap_phase[offset + col]) / (float)(d_in_unwrap_phase[offset + col + 1] - d_in_unwrap_phase[offset + col]));
+
+				if (phase_now - phase_before > EIGHT_STEP_FIX_PHASE)
+				{
+					continue;
+				}
+
+				for (int i = ceil(pixel_before); i < pixel_now; i += 1)
+				{
+					if (d_in_unwrap_phase[offset + i] < phase_now && d_in_unwrap_phase[offset + i] > phase_before)
+					{
+						d_in_unwrap_phase[offset + i] = phase_before + EIGHT_STEP_FIX_PHASE * ((i - pixel_before)/(pixel_now - pixel_before));
 					}
 				}
 

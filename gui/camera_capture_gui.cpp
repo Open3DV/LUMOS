@@ -1711,11 +1711,11 @@ void CameraCaptureGui::captureOneRawFrameBaseThread()
 	int image_size = width * height;
 	int rgb_image_size = rgb_width * rgb_height * 3;
 
-	unsigned char* raw_images_buffer = new unsigned char[(long long)image_size * 28 + rgb_image_size];
+	unsigned char* raw_images_buffer = new unsigned char[(long long)image_size * 36 + rgb_image_size];
 
 	int ret_code = -1;
  
-	ret_code = DfGetCameraRawData03(raw_images_buffer, (long long)image_size * 28 + rgb_image_size);
+	ret_code = DfGetCameraRawData03(raw_images_buffer, (long long)image_size * 36 + rgb_image_size);
 
 	if (DF_SUCCESS != ret_code)
 	{
@@ -1728,13 +1728,13 @@ void CameraCaptureGui::captureOneRawFrameBaseThread()
 	if (0 == ret_code)
 	{
 		// 从里面获得正确的图像
-		cv::Mat image_left(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 13));
-		cv::Mat image_right(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 27));
+		cv::Mat image_left(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 17));
+		cv::Mat image_right(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 35));
 
-		cv::Mat image_left_bright(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 12));
-		cv::Mat image_right_bright(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 26));
+		cv::Mat image_left_bright(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 16));
+		cv::Mat image_right_bright(height, width, CV_8UC1, raw_images_buffer + ((long long)image_size * 34));
 
-		cv::Mat image_rgb(rgb_height, rgb_width, CV_8UC3, raw_images_buffer + ((long long)image_size * 28));
+		cv::Mat image_rgb(rgb_height, rgb_width, CV_8UC3, raw_images_buffer + ((long long)image_size * 36));
 
 		cv::Mat image_rgb2gray;
 		cv::cvtColor(image_left_bright, image_left_bright, cv::COLOR_GRAY2BGR);

@@ -387,7 +387,8 @@ bool cuda_copy_pattern_to_memory(unsigned short* pattern_ptr, int serial_flag, c
 	{
 		return false;
 	}
-	return false;
+	
+	return true;
 
 }
 
@@ -740,6 +741,13 @@ bool cuda_four_step_phase_shift_16bit(cudaStream_t stream_left, cudaStream_t str
 	return true;
 }
 
+bool cuda_eight_step_phase_shift_16bit(cudaStream_t stream_left, cudaStream_t stream_right)
+{
+	kernel_8_step_phase_shift_16bit << <blocksPerGrid, threadsPerBlock, 0, stream_left >> > (d_image_width_, d_image_height_, d_patterns_list_16bit_[0][0], d_patterns_list_16bit_[0][1], d_patterns_list_16bit_[0][2], d_patterns_list_16bit_[0][3], d_patterns_list_16bit_[0][14], d_patterns_list_16bit_[0][15], d_patterns_list_16bit_[0][16], d_patterns_list_16bit_[0][17], d_phase_map_[0], d_noise_mask_map_[0], d_threshold_map_16bit_[0], d_confidence_);
+	kernel_8_step_phase_shift_16bit << <blocksPerGrid, threadsPerBlock, 0, stream_right >> > (d_image_width_, d_image_height_, d_patterns_list_16bit_[1][0], d_patterns_list_16bit_[1][1], d_patterns_list_16bit_[1][2], d_patterns_list_16bit_[1][3], d_patterns_list_16bit_[1][14], d_patterns_list_16bit_[1][15], d_patterns_list_16bit_[1][16], d_patterns_list_16bit_[1][17], d_phase_map_[1], d_noise_mask_map_[1], d_threshold_map_16bit_[1], d_confidence_);
+	return true;
+}
+
 bool cuda_four_step_phase_shift(cudaStream_t stream_left, cudaStream_t stream_right, int serial_flag)
 {
 	kernel_4_step_phase_shift_8bit << <blocksPerGrid, threadsPerBlock, 0, stream_left >> > (d_image_width_, d_image_height_, d_patterns_list_[0][1], d_patterns_list_[0][2], d_patterns_list_[0][3], d_patterns_list_[0][0], d_hdr_phase_map_[0][serial_flag], d_hdr_brightness_map_[0][serial_flag]);
@@ -981,6 +989,16 @@ void cuda_fix_four_step_code_shift(int serial_flag)
 
 	kernel_fix_unwrap_phase<<<blocksPerGridTemp, threadsPerBlockTemp>>>(h_image_width_, h_image_height_, d_unwraped_pixels[0]);
 	kernel_fix_unwrap_phase<<<blocksPerGridTemp, threadsPerBlockTemp>>>(h_image_width_, h_image_height_, d_unwraped_pixels[1]);
+
+}
+
+void cuda_fix_eight_step_code_shift(int serial_flag)
+{
+	dim3 threadsPerBlockTemp(32);
+	dim3 blocksPerGridTemp(6, 8);
+
+	kernel_fix_eight_step_unwrap_phase<<<blocksPerGridTemp, threadsPerBlockTemp>>>(h_image_width_, h_image_height_, d_unwraped_pixels[0]);
+	kernel_fix_eight_step_unwrap_phase<<<blocksPerGridTemp, threadsPerBlockTemp>>>(h_image_width_, h_image_height_, d_unwraped_pixels[1]);
 
 }
 
