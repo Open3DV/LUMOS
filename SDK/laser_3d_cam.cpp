@@ -702,6 +702,54 @@ DF_SDK_API int  DfGetCameraResolution(int* width, int* height)
 	return DF_SUCCESS;
 }
 
+DF_SDK_API int  DfTransGrayHandEeyCalibToRGB(float* gray_cam_2_base_r, float* gray_cam_2_base_t, float* output_rgb_cam_2_base_r, float* output_rgb_cam_2_base_t)
+{
+	float R_l2rgb[9];
+	float T_l2rgb[3];
+
+	float R_rgb2l[9];
+	float T_rgb_l[3];
+
+	for (int i = 0; i < 9; i += 1)
+	{
+		R_l2rgb[i] = calibration_param_.rotation_matrix[i];
+	}
+	for (int i = 0; i < 3; i += 1)
+	{
+		T_l2rgb[i] = calibration_param_.translation_matrix[i];
+	}
+
+	R_rgb2l[0] = R_l2rgb[0];
+	R_rgb2l[1] = R_l2rgb[3];
+	R_rgb2l[2] = R_l2rgb[6];
+	R_rgb2l[3] = R_l2rgb[1];
+	R_rgb2l[4] = R_l2rgb[4];
+	R_rgb2l[5] = R_l2rgb[7];
+	R_rgb2l[6] = R_l2rgb[2];
+	R_rgb2l[7] = R_l2rgb[5];
+	R_rgb2l[8] = R_l2rgb[8];
+
+	T_rgb_l[0] = -1. * (T_l2rgb[0] * R_rgb2l[0] + T_l2rgb[1] * R_rgb2l[1] + T_l2rgb[2] * R_rgb2l[2]);
+	T_rgb_l[1] = -1. * (T_l2rgb[0] * R_rgb2l[3] + T_l2rgb[1] * R_rgb2l[4] + T_l2rgb[2] * R_rgb2l[5]);
+	T_rgb_l[2] = -1. * (T_l2rgb[0] * R_rgb2l[6] + T_l2rgb[1] * R_rgb2l[7] + T_l2rgb[2] * R_rgb2l[8]);
+
+	output_rgb_cam_2_base_r[0] = gray_cam_2_base_r[0] * R_rgb2l[0] + gray_cam_2_base_r[1] * R_rgb2l[3] + gray_cam_2_base_r[2] * R_rgb2l[6];
+	output_rgb_cam_2_base_r[1] = gray_cam_2_base_r[0] * R_rgb2l[1] + gray_cam_2_base_r[1] * R_rgb2l[4] + gray_cam_2_base_r[2] * R_rgb2l[7];
+	output_rgb_cam_2_base_r[2] = gray_cam_2_base_r[0] * R_rgb2l[2] + gray_cam_2_base_r[1] * R_rgb2l[5] + gray_cam_2_base_r[2] * R_rgb2l[8];
+	output_rgb_cam_2_base_r[3] = gray_cam_2_base_r[3] * R_rgb2l[0] + gray_cam_2_base_r[4] * R_rgb2l[3] + gray_cam_2_base_r[5] * R_rgb2l[6];
+	output_rgb_cam_2_base_r[4] = gray_cam_2_base_r[3] * R_rgb2l[1] + gray_cam_2_base_r[4] * R_rgb2l[4] + gray_cam_2_base_r[5] * R_rgb2l[7];
+	output_rgb_cam_2_base_r[5] = gray_cam_2_base_r[3] * R_rgb2l[2] + gray_cam_2_base_r[4] * R_rgb2l[5] + gray_cam_2_base_r[5] * R_rgb2l[8];
+	output_rgb_cam_2_base_r[6] = gray_cam_2_base_r[6] * R_rgb2l[0] + gray_cam_2_base_r[7] * R_rgb2l[3] + gray_cam_2_base_r[8] * R_rgb2l[6];
+	output_rgb_cam_2_base_r[7] = gray_cam_2_base_r[6] * R_rgb2l[1] + gray_cam_2_base_r[7] * R_rgb2l[4] + gray_cam_2_base_r[8] * R_rgb2l[7];
+	output_rgb_cam_2_base_r[8] = gray_cam_2_base_r[6] * R_rgb2l[2] + gray_cam_2_base_r[7] * R_rgb2l[5] + gray_cam_2_base_r[8] * R_rgb2l[8];
+
+	output_rgb_cam_2_base_t[0] = gray_cam_2_base_r[0] * T_rgb_l[0] + gray_cam_2_base_r[1] * T_rgb_l[1] + gray_cam_2_base_r[2] * T_rgb_l[2] + gray_cam_2_base_t[0];
+	output_rgb_cam_2_base_t[1] = gray_cam_2_base_r[3] * T_rgb_l[0] + gray_cam_2_base_r[4] * T_rgb_l[1] + gray_cam_2_base_r[5] * T_rgb_l[2] + gray_cam_2_base_t[1];
+	output_rgb_cam_2_base_t[2] = gray_cam_2_base_r[6] * T_rgb_l[0] + gray_cam_2_base_r[7] * T_rgb_l[1] + gray_cam_2_base_r[8] * T_rgb_l[2] + gray_cam_2_base_t[2];
+
+	return DF_SUCCESS;
+}
+
 DF_SDK_API int DfGetGrayCameraResolution(int* width, int* height)
 {
 	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);

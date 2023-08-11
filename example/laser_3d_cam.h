@@ -84,6 +84,13 @@ extern "C"
 	//返回值： 类型（int）:返回0表示获取标定参数成功;返回-1表示获取标定参数失败.
 	DF_SDK_API int DfGetCalibrationParam(struct CalibrationParam* calibration_param);
 
+	//函数名： DfTransGrayHandEeyCalibToRGB
+	//功能： 转换左目黑白相机手眼标定参数到右目
+	//输入参数： gray_cam_2_base_r（左目相机坐标系到base坐标系的旋转矩阵）、gray_cam_2_base_t（左目相机坐标系到base坐标系的平移）
+	//输出参数： output_rgb_cam_2_base_r（彩色相机坐标系到base坐标系的旋转矩阵）、output_rgb_cam_2_base_t（彩色相机坐标系到base坐标系的平移）
+	//返回值： 类型（int）:返回0表示获取参数成功;返回-1表示获取参数失败.
+	DF_SDK_API int  DfTransGrayHandEeyCalibToRGB(float* gray_cam_2_base_r, float* gray_cam_2_base_t, float* output_rgb_cam_2_base_r, float* output_rgb_cam_2_base_t);
+
 	//函数名： DfSetParamCameraExposure
 	//功能： 设置相机曝光时间
 	//输入参数：exposure(相机曝光时间)
