@@ -11,6 +11,8 @@ class AinstecProjector: public BaseProjector
 
     int serialHandle_;
 
+    float minExposure_;
+
     public:
     AinstecProjector();
     ~AinstecProjector();
@@ -28,4 +30,8 @@ class AinstecProjector: public BaseProjector
     bool setProjectorTriggerDlay(int dlay);
 
     bool setProjectorWorkingMode(int mode);
+
+    bool getMinExposure(float& minExposure);
+    
+    bool getCorrectExposure(int& exposureTime);
 };

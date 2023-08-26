@@ -1,4 +1,6 @@
 #include "projector_ainstec.h"
+#include <iostream>
+#include <unistd.h>
 
 AinstecProjector::AinstecProjector()
 {
@@ -35,8 +37,15 @@ bool AinstecProjector::init()
     // 配置好光机的图像
     setProjectorWorkingMode(1);
 
+    float minExposure;
+
+    getMinExposure(minExposure);
+
     // 设置光机的曝光时间
     int exposure = 10000;
+
+    getCorrectExposure(exposure);
+    
     if (setProjectorExposure(exposure))
     {
         projectorExposure_ = exposure;
@@ -234,6 +243,72 @@ bool AinstecProjector::setProjectorWorkingMode(int mode)
 
     return true;
 
+}
+
+bool AinstecProjector::getMinExposure(float& minExposure)
+{
+    unsigned char minExposeurBuff[100] = {0};
+
+    char cmd1[] = {0x5a, 0xb1, 0x01, 0xa5};
+    char cmd2[] = {0x5a, 0xb1, 0x02, 0xa5};
+
+    int len = -1;
+
+    sleep(1);
+
+    len = serial_write(serialHandle_, cmd1, sizeof(cmd1));
+    if (len == -1)
+    {
+        return false;
+    }
+
+    len = serial_read(serialHandle_, (char*)minExposeurBuff, sizeof(char));
+    if (len == -1)
+    {
+        return false;
+    }
+
+    len = serial_write(serialHandle_, cmd2, sizeof(cmd2));
+    if (len == -1)
+    {
+        return false;
+    }
+
+    len = serial_read(serialHandle_, (char*)minExposeurBuff + 1, sizeof(char) * 50);
+    if (len == -1)
+    {
+        return false;
+    }
+
+    unsigned short frequency = 0;
+    frequency = minExposeurBuff[0];
+    frequency = (frequency << 8) + minExposeurBuff[1];
+    std::cout << "frequency: " << frequency << std::endl;
+
+    minExposure = 1000000. / frequency;
+
+    minExposure_ = minExposure;
+
+    return true;
+}
+
+bool AinstecProjector::getCorrectExposure(int& exposureTime)
+{
+    if (exposureTime < 2500)
+    {
+        exposureTime = 2500;
+    }
+    if (exposureTime > 100000)
+    {
+        exposureTime = 100000;
+    }
+
+    exposureTime = ((int)(exposureTime / minExposure_) + 1) * minExposure_;
+
+    std::cout << "getCorrectExposure: " << exposureTime << std::endl;
+    std::cout << "minExposure_: " << minExposure_ << std::endl;
+
+    return true;
 }
 
 

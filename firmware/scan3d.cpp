@@ -369,6 +369,8 @@ int Scan3D::init()
     
     LOG(INFO) << "init GPU end";
 
+    setParamExposure(camera_exposure_);
+
     return true;
  
 } 
@@ -412,14 +414,20 @@ bool Scan3D::setParamExposure(float exposure)
         return false;
     }
 
-    projector_->setProjectorExposure(exposure);
+    int int_exposure = exposure;
+
+    projector_->getCorrectExposure(int_exposure);
+
+    exposure = int_exposure;
+
+    projector_->setProjectorExposure(exposure + 700);
 
 
-    if (!camera_left_->setExposure(exposure - 700))
+    if (!camera_left_->setExposure(exposure))
     {
         return false;
     }
-    if (!camera_right_->setExposure(exposure - 700))
+    if (!camera_right_->setExposure(exposure))
     {
         return false;
     }

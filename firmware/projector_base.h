@@ -30,4 +30,6 @@ public:
 
     virtual bool setProjectorWorkingMode(int mode) = 0;
 
+    virtual bool getCorrectExposure(int& exposureTime) {return false;}
+
 };

@@ -38,12 +38,12 @@ int open_serial(const char* serial)
 
 int serial_write(int handle, char* buff, unsigned long long send_size)
 {
+    tcflush(handle, TCIFLUSH);
     int len = write(handle, buff, send_size);
     if (len < 0)
     {
         return -1;
     }
-    tcflush(handle, TCIFLUSH);
     return len;
 }
 
