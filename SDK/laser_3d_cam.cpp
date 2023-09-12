@@ -329,6 +329,7 @@ int resizeRGBImageToHalf(unsigned char* rgb_brightness_map, int orig_width, int 
 
 bool convertDepthToRGBDepth(float* depth_input_ptr, float* depth_output, float* l2rgb_r_ptr, float* l2rgb_t_ptr, float* camera_intrinsic_ptr, float* rgb_camera_intrinsic_ptr, int width, int height, int rgb_width, int rgb_height)
 {
+	memset(depth_output, 0, sizeof(float) * rgb_width * rgb_height);
 //#pragma omp parallel for
 	for (int row = 0; row < height; row += 1)
 	{
