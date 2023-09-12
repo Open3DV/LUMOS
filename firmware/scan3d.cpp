@@ -420,7 +420,7 @@ bool Scan3D::setParamExposure(float exposure)
 
     exposure = int_exposure;
 
-    projector_->setProjectorExposure(exposure + 700);
+    projector_->setProjectorExposure(exposure);
 
 
     if (!camera_left_->setExposure(exposure))

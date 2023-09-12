@@ -101,6 +101,8 @@ bool AinstecProjector::setProjectorExposure(int exposure)
         exposure = 15000;
     }
 
+    exposure += 1000;
+
     unsigned short exposure_100us = exposure / 100;
 
     std::cout << "Set projector exposure: " << exposure_100us << " * 100us" << std::endl;
