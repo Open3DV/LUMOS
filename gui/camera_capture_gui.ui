@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1633</width>
-    <height>1155</height>
+    <width>2314</width>
+    <height>1600</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -148,6 +148,18 @@
           </property>
           <property name="text">
            <string>过曝显示</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_select_camera">
+          <property name="font">
+           <font>
+            <pointsize>16</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>彩色相机坐标系</string>
           </property>
          </widget>
         </item>
@@ -313,7 +325,7 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout" stretch="2,5">
        <item>
-        <layout class="QVBoxLayout" name="verticalLayout_5" stretch="0,1">
+        <layout class="QVBoxLayout" name="verticalLayout_5" stretch="3,1">
          <item>
           <widget class="QScrollArea" name="scrollArea">
            <property name="maximumSize">
@@ -330,8 +342,8 @@
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>438</width>
-              <height>931</height>
+              <width>456</width>
+              <height>1199</height>
              </rect>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -439,15 +451,63 @@
                </item>
                <item>
                 <layout class="QGridLayout" name="gridLayout">
-                 <item row="11" column="1">
-                  <widget class="QLabel" name="label_exposure_num">
+                 <item row="12" column="1">
+                  <widget class="QSpinBox" name="spinBox_exposure_num">
+                   <property name="font">
+                    <font>
+                     <pointsize>16</pointsize>
+                    </font>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::UpDownArrows</enum>
+                   </property>
+                   <property name="minimum">
+                    <number>2</number>
+                   </property>
+                   <property name="maximum">
+                    <number>6</number>
+                   </property>
+                   <property name="displayIntegerBase">
+                    <number>10</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="10" column="0">
+                  <widget class="QSpinBox" name="spinBox_camera_exposure">
+                   <property name="font">
+                    <font>
+                     <pointsize>16</pointsize>
+                    </font>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::UpDownArrows</enum>
+                   </property>
+                   <property name="keyboardTracking">
+                    <bool>false</bool>
+                   </property>
+                   <property name="minimum">
+                    <number>1700</number>
+                   </property>
+                   <property name="maximum">
+                    <number>100000</number>
+                   </property>
+                   <property name="singleStep">
+                    <number>1000</number>
+                   </property>
+                   <property name="value">
+                    <number>12000</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0">
+                  <widget class="QLabel" name="label_min_z">
                    <property name="font">
                     <font>
                      <pointsize>12</pointsize>
                     </font>
                    </property>
                    <property name="text">
-                    <string>高动态曝光数</string>
+                    <string>最小高度</string>
                    </property>
                   </widget>
                  </item>
@@ -469,6 +529,30 @@
                    </property>
                   </widget>
                  </item>
+                 <item row="11" column="1">
+                  <widget class="QLabel" name="label_exposure_num">
+                   <property name="font">
+                    <font>
+                     <pointsize>12</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>高动态曝光数</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="11" column="0">
+                  <widget class="QLabel" name="label_confidence">
+                   <property name="font">
+                    <font>
+                     <pointsize>12</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>置信度</string>
+                   </property>
+                  </widget>
+                 </item>
                  <item row="3" column="1">
                   <widget class="QLabel" name="label_max_z">
                    <property name="font">
@@ -478,6 +562,27 @@
                    </property>
                    <property name="text">
                     <string>最大高度</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="4" column="0">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_min_z">
+                   <property name="font">
+                    <font>
+                     <pointsize>16</pointsize>
+                    </font>
+                   </property>
+                   <property name="frame">
+                    <bool>true</bool>
+                   </property>
+                   <property name="keyboardTracking">
+                    <bool>false</bool>
+                   </property>
+                   <property name="minimum">
+                    <double>-9999.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>9999.989999999999782</double>
                    </property>
                   </widget>
                  </item>
@@ -499,29 +604,8 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="6" column="0">
-                  <widget class="QSpinBox" name="spinBox_led">
-                   <property name="font">
-                    <font>
-                     <pointsize>16</pointsize>
-                    </font>
-                   </property>
-                   <property name="frame">
-                    <bool>true</bool>
-                   </property>
-                   <property name="keyboardTracking">
-                    <bool>false</bool>
-                   </property>
-                   <property name="maximum">
-                    <number>1023</number>
-                   </property>
-                   <property name="singleStep">
-                    <number>10</number>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="0">
-                  <widget class="QDoubleSpinBox" name="doubleSpinBox_min_z">
+                 <item row="4" column="1">
+                  <widget class="QDoubleSpinBox" name="doubleSpinBox_max_z">
                    <property name="font">
                     <font>
                      <pointsize>16</pointsize>
@@ -553,27 +637,6 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="1">
-                  <widget class="QDoubleSpinBox" name="doubleSpinBox_max_z">
-                   <property name="font">
-                    <font>
-                     <pointsize>16</pointsize>
-                    </font>
-                   </property>
-                   <property name="frame">
-                    <bool>true</bool>
-                   </property>
-                   <property name="keyboardTracking">
-                    <bool>false</bool>
-                   </property>
-                   <property name="minimum">
-                    <double>-9999.000000000000000</double>
-                   </property>
-                   <property name="maximum">
-                    <double>9999.989999999999782</double>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="5" column="0">
                   <widget class="QLabel" name="label_led">
                    <property name="font">
@@ -586,93 +649,36 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="11" column="0">
-                  <widget class="QLabel" name="label_confidence">
-                   <property name="font">
-                    <font>
-                     <pointsize>12</pointsize>
-                    </font>
-                   </property>
-                   <property name="text">
-                    <string>置信度</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="12" column="1">
-                  <widget class="QSpinBox" name="spinBox_exposure_num">
+                 <item row="6" column="0">
+                  <widget class="QSpinBox" name="spinBox_led">
                    <property name="font">
                     <font>
                      <pointsize>16</pointsize>
                     </font>
                    </property>
-                   <property name="buttonSymbols">
-                    <enum>QAbstractSpinBox::UpDownArrows</enum>
-                   </property>
-                   <property name="minimum">
-                    <number>2</number>
-                   </property>
-                   <property name="maximum">
-                    <number>6</number>
-                   </property>
-                   <property name="displayIntegerBase">
-                    <number>10</number>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="0">
-                  <widget class="QLabel" name="label_min_z">
-                   <property name="font">
-                    <font>
-                     <pointsize>12</pointsize>
-                    </font>
-                   </property>
-                   <property name="text">
-                    <string>最小高度</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="10" column="0">
-                  <widget class="QSpinBox" name="spinBox_camera_exposure">
-                   <property name="font">
-                    <font>
-                     <pointsize>16</pointsize>
-                    </font>
-                   </property>
-                   <property name="buttonSymbols">
-                    <enum>QAbstractSpinBox::UpDownArrows</enum>
+                   <property name="frame">
+                    <bool>true</bool>
                    </property>
                    <property name="keyboardTracking">
                     <bool>false</bool>
                    </property>
-                   <property name="minimum">
-                    <number>1700</number>
-                   </property>
                    <property name="maximum">
-                    <number>100000</number>
+                    <number>1023</number>
                    </property>
                    <property name="singleStep">
-                    <number>1000</number>
-                   </property>
-                   <property name="value">
-                    <number>12000</number>
+                    <number>10</number>
                    </property>
                   </widget>
                  </item>
-                 <item row="10" column="1">
-                  <widget class="QSpinBox" name="spinBox_smoothing">
+                 <item row="8" column="1">
+                  <widget class="QLabel" name="label_smoothing">
                    <property name="font">
                     <font>
-                     <pointsize>16</pointsize>
+                     <pointsize>12</pointsize>
                     </font>
                    </property>
-                   <property name="keyboardTracking">
-                    <bool>false</bool>
-                   </property>
-                   <property name="maximum">
-                    <number>5</number>
-                   </property>
-                   <property name="displayIntegerBase">
-                    <number>10</number>
+                   <property name="text">
+                    <string>平滑</string>
                    </property>
                   </widget>
                  </item>
@@ -691,27 +697,21 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="1">
-                  <widget class="QLabel" name="label_gain">
+                 <item row="10" column="1">
+                  <widget class="QSpinBox" name="spinBox_smoothing">
                    <property name="font">
                     <font>
-                     <pointsize>12</pointsize>
+                     <pointsize>16</pointsize>
                     </font>
                    </property>
-                   <property name="text">
-                    <string>增益</string>
+                   <property name="keyboardTracking">
+                    <bool>false</bool>
                    </property>
-                  </widget>
-                 </item>
-                 <item row="8" column="1">
-                  <widget class="QLabel" name="label_smoothing">
-                   <property name="font">
-                    <font>
-                     <pointsize>12</pointsize>
-                    </font>
+                   <property name="maximum">
+                    <number>5</number>
                    </property>
-                   <property name="text">
-                    <string>平滑</string>
+                   <property name="displayIntegerBase">
+                    <number>10</number>
                    </property>
                   </widget>
                  </item>
@@ -736,6 +736,18 @@
                    </property>
                    <property name="value">
                     <double>1.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QLabel" name="label_gain">
+                   <property name="font">
+                    <font>
+                     <pointsize>12</pointsize>
+                    </font>
+                   </property>
+                   <property name="text">
+                    <string>增益</string>
                    </property>
                   </widget>
                  </item>
@@ -1064,7 +1076,7 @@
  </resources>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup_image"/>
   <buttongroup name="buttonGroup_exposure"/>
+  <buttongroup name="buttonGroup_image"/>
  </buttongroups>
 </ui>

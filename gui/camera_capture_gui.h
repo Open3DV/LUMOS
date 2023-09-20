@@ -184,6 +184,8 @@ private slots:
 
 	void do_checkBox_toggled_over_exposure(bool state);
 
+	void do_checkBox_toggled_select_camera(bool state);
+
 	void do_spin_smoothing_changed(int val);
 
 	void do_spin_exposure_num_changed(int val);
