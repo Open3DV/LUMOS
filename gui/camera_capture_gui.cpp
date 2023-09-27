@@ -245,6 +245,7 @@ bool CameraCaptureGui::initializeFunction()
 	 
 	connect(ui.comboBox_ip, SIGNAL(activated(int)), this, SLOT(do_comboBox_activated_ip(int))); 
 	connect(ui.checkBox_over_exposure, SIGNAL(toggled(bool)), this, SLOT(do_checkBox_toggled_over_exposure(bool)));
+	connect(ui.checkBox_select_camera, SIGNAL(toggled(bool)), this, SLOT(do_checkBox_toggled_select_camera(bool)));
 
 	connect(ui.pushButton_connect, SIGNAL(clicked()), this, SLOT(do_pushButton_connect()));
 	connect(ui.pushButton_refresh, SIGNAL(clicked()), this, SLOT(do_pushButton_refresh()));
@@ -340,27 +341,31 @@ bool CameraCaptureGui::saveOneFrameData(QString path_name)
 
 	if (SaveDataType::Undistort == save_data_type_)
 	{
+		cv::Mat bgr_image;
+		cv::cvtColor(undistort_brightness_map_, bgr_image, cv::COLOR_RGB2BGR);
 		QString brightness_str = path_name + "_bright.bmp";
-		cv::imwrite(brightness_str.toLocal8Bit().toStdString(), undistort_brightness_map_);
+		cv::imwrite(brightness_str.toLocal8Bit().toStdString(), bgr_image);
 
 		QString depth_str = path_name + "_depth_map.tiff";
 		cv::imwrite(depth_str.toLocal8Bit().toStdString(), undistort_depth_map_);
 
 		QString points_str = path_name + "_depth_map.ply";
 		FileIoFunction file_io_machine;
-		file_io_machine.SaveBinPointsToPly(undistort_pointcloud_map_, points_str, undistort_brightness_map_);
+		file_io_machine.SaveBinPointsToPly(undistort_pointcloud_map_, points_str, bgr_image);
 	}
 	else
 	{
+		cv::Mat bgr_image;
+		cv::cvtColor(brightness_map_, bgr_image, cv::COLOR_RGB2BGR);
 		QString brightness_str = path_name + "_bright.bmp";
-		cv::imwrite(brightness_str.toLocal8Bit().toStdString(), brightness_map_);
+		cv::imwrite(brightness_str.toLocal8Bit().toStdString(), bgr_image);
 
 		QString depth_str = path_name + "_depth_map.tiff";
 		cv::imwrite(depth_str.toLocal8Bit().toStdString(), depth_map_);
 
 		QString points_str = path_name + ".ply"; 
 		FileIoFunction file_io_machine;
-		file_io_machine.SaveBinPointsToPly(pointcloud_map_, points_str, brightness_map_);
+		file_io_machine.SaveBinPointsToPly(pointcloud_map_, points_str, bgr_image);
 	}
 
 
@@ -417,27 +422,57 @@ bool CameraCaptureGui::renderBrightnessImage(cv::Mat brightness)
 	int nr = color_map.rows;
 	int nc = color_map.cols;
 
-	for (int r = 0; r < nr; r++)
-	{
-		uchar* ptr_b = brightness.ptr<uchar>(r);
-		cv::Vec3b* ptr_cb = color_map.ptr<cv::Vec3b>(r);
-		for (int c = 0; c < nc; c++)
-		{
-			if (ptr_b[c] == 255)
-			{
-				ptr_cb[c][0] = 255;
-				ptr_cb[c][1] = 0;
-				ptr_cb[c][2] = 0;
-			}
-			else
-			{
-				ptr_cb[c][0] = ptr_b[c];
-				ptr_cb[c][1] = ptr_b[c];
-				ptr_cb[c][2] = ptr_b[c];
-			}
-		}
+	bool is_3_channels = brightness.channels() == 3 ? true : false;
 
+	if (is_3_channels)
+	{
+		for (int r = 0; r < nr; r++)
+		{
+			cv::Vec3b* ptr_b = brightness.ptr<cv::Vec3b>(r);
+			cv::Vec3b* ptr_cb = color_map.ptr<cv::Vec3b>(r);
+			for (int c = 0; c < nc; c++)
+			{
+				if (ptr_b[c][2] == 255)
+				{
+					ptr_cb[c][0] = 255;
+					ptr_cb[c][1] = 0;
+					ptr_cb[c][2] = 0;
+				}
+				else
+				{
+					ptr_cb[c][0] = ptr_b[c][0];
+					ptr_cb[c][1] = ptr_b[c][1];
+					ptr_cb[c][2] = ptr_b[c][2];
+				}
+			}
+
+		}
 	}
+	else
+	{
+		for (int r = 0; r < nr; r++)
+		{
+			uchar* ptr_b = brightness.ptr<uchar>(r);
+			cv::Vec3b* ptr_cb = color_map.ptr<cv::Vec3b>(r);
+			for (int c = 0; c < nc; c++)
+			{
+				if (ptr_b[c] == 255)
+				{
+					ptr_cb[c][0] = 255;
+					ptr_cb[c][1] = 0;
+					ptr_cb[c][2] = 0;
+				}
+				else
+				{
+					ptr_cb[c][0] = ptr_b[c];
+					ptr_cb[c][1] = ptr_b[c];
+					ptr_cb[c][2] = ptr_b[c];
+				}
+			}
+
+		}
+	}
+
 	if (ui.checkBox_over_exposure->isChecked())
 	{
 		render_image_brightness_ = color_map.clone();
@@ -1531,9 +1566,25 @@ void CameraCaptureGui::captureOneFrameBaseThread(bool hdr)
 	int width = camera_width_;
 	int height = camera_height_;
 
-	int image_size = width * height;
+	DfGetCameraResolution(&width, &height);
+	int channels;
+	DfGetCameraChannels(&channels);
 
-	cv::Mat brightness(height, width, CV_8U, cv::Scalar(0));
+	int image_size = width * height * channels;
+
+	cv::Mat brightness;
+
+	LumosCameraSelect select;
+	DfGetSelectedCamera(select);
+	if (select == LumosCameraSelect::GrayCamera)
+	{
+		brightness = cv::Mat(height, width, CV_8U, cv::Scalar(0));
+	}
+	else
+	{
+		brightness = cv::Mat(height, width, CV_8UC3, cv::Scalar(0));
+	}
+
 	cv::Mat depth(height, width, CV_32F, cv::Scalar(0.));
 	cv::Mat point_cloud(height, width, CV_32FC3, cv::Scalar(0.));
 
@@ -1651,7 +1702,15 @@ void CameraCaptureGui::captureOneFrameBaseThread(bool hdr)
 		emit send_temperature_update(temperature);
 
 		//capture_m_mutex_.lock();
-
+		if (select == LumosCameraSelect::GrayCamera)
+		{
+			cv::cvtColor(brightness, brightness, cv::COLOR_GRAY2RGB);
+		}
+		else
+		{
+			cv::cvtColor(brightness, brightness, cv::COLOR_BGR2RGB);
+		}
+		
 		brightness_map_ = brightness.clone();
 		depth_map_ = depth.clone();
 		undistort_brightness_map_ = brightness_map_;
@@ -1734,10 +1793,12 @@ void CameraCaptureGui::captureOneRawFrameBaseThread()
 
 	//addLogMessage(u8"采集数据：");
 
-	int width = camera_width_;
-	int height = camera_height_;
+	int width;
+	int height;
 	int rgb_width = rgb_camera_width_;
 	int rgb_height = rgb_camera_height_;
+
+	DfGetGrayCameraResolution(&width, &height);
 
 	int image_size = width * height;
 	int rgb_image_size = rgb_width * rgb_height * 3;
@@ -2069,6 +2130,7 @@ void  CameraCaptureGui::do_pushButton_connect()
 
 
 			addLogMessage(u8"连接相机：");
+			DfSelectCamera(LumosCameraSelect::GrayCamera);
 			int ret_code = DfConnect(camera_ip_.toStdString().c_str());
  
   
@@ -3087,6 +3149,12 @@ void CameraCaptureGui::do_checkBox_toggled_over_exposure(bool state)
 {
 	renderBrightnessImage(brightness_map_); 
 	showImage();
+}
+
+void CameraCaptureGui::do_checkBox_toggled_select_camera(bool state)
+{
+	LumosCameraSelect select = state ? LumosCameraSelect::RGBCamera : LumosCameraSelect::GrayCamera;
+	DfSelectCamera(select);
 }
 
 void CameraCaptureGui::do_checkBox_toggled_depth_filter(bool state)
