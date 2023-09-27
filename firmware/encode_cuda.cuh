@@ -67,6 +67,10 @@ __global__ void kernel_remap(uchar* src, uchar* dst, short2* map1, ushort* map2,
 
 __global__ void kernel_remap(unsigned short* src, unsigned short* dst, short2* map1, ushort* map2, short4* weight, int width, int height);
 
+__global__ void kernel_remap_repetition_mode(unsigned short* src, unsigned short* dst, short2* map1, ushort* map2, short4* weight, int width, int height);
+
+__global__ void kernel_normalize_repetition_patterns(unsigned short* src, unsigned short* dst, float repetition_count, int width, int height);
+
 __global__ void kernel_depth_filter_step_1(uint32_t img_height, uint32_t img_width, float depth_threshold, float* const depth_map, float* const depth_map_temp, unsigned char* mask_temp);
 
 __global__ void kernel_depth_filter_step_2(uint32_t img_height, uint32_t img_width, float depth_threshold, float* const depth_map, float* const depth_map_temp, unsigned char* mask_temp);

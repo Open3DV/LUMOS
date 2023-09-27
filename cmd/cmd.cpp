@@ -133,10 +133,18 @@ laser_3d_cam.exe --get-frame-04 --ip 192.168.x.x --path ./frame_04\n\
 16.Get Frame 04 hdr: 获取一帧彩色点云HDR（基于RGB相机坐标系）\n\
 laser_3d_cam.exe --get-frame-04-hdr --ip 192.168.x.x --path ./frame_04_hdr\n\
 \n\
+16.Get Repetition Frame 01: 获取一帧重复曝光数据\n\
+laser_3d_cam.exe --get-repetition-frame-01 --count 6 --ip 192.168.x.x --path ./frame01_repetition\n\
+\n\
+17.Get Repetition Frame 04: 获取一帧彩色模式的重复曝光数据\n\
+laser_3d_cam.exe --get-repetition-frame-04 --count 6 --ip 192.168.x.x --path ./frame04_repetition\n\
+\n\
 ";
 
 void help_with_version(const char* help);
 int get_frame_01(const char* ip, const char* frame_path);
+int get_frame_01_repetition(const char* ip, int count, const char* frame_path);
+int get_frame_04_repetition(const char* ip, int count, const char* frame_path);
 int get_frame_01_hdr(const char* ip, const char* frame_path);
 int get_frame_03(const char* ip, const char* frame_path);
 int get_frame_04(const char* ip, const char* frame_path);
@@ -185,6 +193,8 @@ enum opt_set
 	GET_FRAME_01,
 	GET_FRAME_01_HDR,
 	GET_FRAME_03,
+	GET_FRAME_01_REPETITION,
+	GET_FRAME_04_REPETITION,
 	GET_FRAME_04,
 	GET_FRAME_04_HDR,
 	GET_FRAME_TEST,
@@ -203,7 +213,8 @@ enum opt_set
 	SET_HDR_PARAM,
 	SET_CAMERA_GAMMA,
 	GET_CAMERA_GAMMA,
-	GAMMA
+	GAMMA,
+	COUNT
 };
 
 static struct option long_options[] =
@@ -216,6 +227,7 @@ static struct option long_options[] =
 	{"gain", required_argument, NULL, GAIN},
 	{"line-index", required_argument, NULL, LINE_INDEX},
 	{"gamma", required_argument, NULL, GAMMA},
+	{"count", required_argument, NULL, 	COUNT},
 	{"get-calib-param",no_argument,NULL,GET_CALIB_PARAM},
 	{"set-calib-param",no_argument,NULL,SET_CALIB_PARAM},
 	{"get-raw-01",no_argument,NULL,GET_RAW_01},
@@ -223,6 +235,8 @@ static struct option long_options[] =
 	{"get-raw-03",no_argument,NULL,GET_RAW_03},
 	{"get-frame-01",no_argument,NULL,GET_FRAME_01},
 	{"get-frame-01-hdr",no_argument,NULL,GET_FRAME_01_HDR},
+	{"get-repetition-frame-01",no_argument,NULL,GET_FRAME_01_REPETITION},
+	{"get-repetition-frame-04",no_argument,NULL,GET_FRAME_04_REPETITION},
 	{"get-frame-03",no_argument,NULL,GET_FRAME_03},
 	{"get-frame-04",no_argument,NULL,GET_FRAME_04},
 	{"get-frame-04-hdr",no_argument,NULL,GET_FRAME_04_HDR},
@@ -247,6 +261,7 @@ const char* c_offset = NULL;
 const char* c_gain = NULL;
 const char* c_line_index = NULL;
 const char* c_gamma = NULL;
+const char* c_count = NULL;
 
 int command = HELP;
 
@@ -286,6 +301,9 @@ int main(int argc, char* argv[])
 		case GAMMA:
 			c_gamma = optarg;
 			break;
+		case COUNT:
+			c_count = optarg;
+			break;
 		case '?':
 			printf("unknow option:%c\n", optopt);
 			break;
@@ -321,6 +339,12 @@ int main(int argc, char* argv[])
 	case GET_FRAME_01_HDR:
 		get_frame_01_hdr(camera_id, path);
 		break;
+	case GET_FRAME_01_REPETITION:
+	{
+		int num = std::atoi(c_count);
+		get_frame_01_repetition(camera_id, num, path);
+	}
+	break;
 	case GET_FRAME_03:
 		get_frame_03(camera_id, path);
 		break;
@@ -330,6 +354,12 @@ int main(int argc, char* argv[])
 	case GET_FRAME_04_HDR:
 		get_frame_04_hdr(camera_id, path);
 		break;
+	case GET_FRAME_04_REPETITION:
+	{
+		int num = std::atoi(c_count);
+		get_frame_04_repetition(camera_id, num, path);
+	}
+	break;
 	case GET_FRAME_TEST:
 		get_frame_test(camera_id, path);
 		break;
@@ -709,7 +739,7 @@ void save_images_16bit(const char* raw_image_dir, unsigned short* buffer, int wi
 	std::string mkdir_cmd = std::string("mkdir ") + folderPath;
 	system(mkdir_cmd.c_str());
 
-	int image_size = width * height * sizeof(unsigned short);
+	int image_size = width * height;
 
 	for (int i = 0; i < image_num; i++)
 	{
@@ -1150,6 +1180,64 @@ int get_frame_01_hdr(const char* ip, const char* frame_path)
 	unsigned char* brightness_buf = new unsigned char[brightness_bug_size];
 
 	ret = DfGetFrame01HDR(depth_buf, depth_buf_size, brightness_buf, brightness_bug_size);
+
+	DfDisconnectNet();
+
+	save_frame(height, width, depth_buf, brightness_buf, frame_path);
+
+	cv::Mat depthTemp(height, width, CV_32F, depth_buf);
+	cv::Mat brightnessTemp(height, width, CV_8U, brightness_buf);
+
+	//cv::Mat Q_mat(4, 4, CV_32F, Q_matrix);
+
+	cv::Mat camera_intrinsic_temp(3, 3, CV_32F, calibration_param_.camera_intrinsic);
+
+	//depth_to_xyz(depthTemp, brightnessTemp, Q_mat, frame_path);
+	cv::Mat pointCloud;
+	//depth_to_point_cloud_map(depthTemp, Q_mat, pointCloud);
+	depth_to_point_cloud_map_use_intrinsic(depthTemp, camera_intrinsic_temp, pointCloud);
+
+	std::string folder_path = frame_path;
+	std::string pointcloud_path = folder_path + "_pointcloud.ply";
+
+	SaveBinPointsToPly(pointCloud, pointcloud_path, brightnessTemp);
+
+
+
+
+	delete[] depth_buf;
+	delete[] brightness_buf;
+
+
+
+	return 1;
+}
+
+int get_frame_01_repetition(const char* ip, int count, const char* frame_path)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnectNet(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+	int width, height;
+	DfGetGrayCameraResolution(&width, &height);
+
+
+	ret = DfGetCalibrationParam(calibration_param_);
+
+	int image_size = width * height;
+
+	int depth_buf_size = image_size * 1 * 4;
+	float* depth_buf = (float*)(new char[depth_buf_size]);
+
+	int brightness_bug_size = image_size;
+	unsigned char* brightness_buf = new unsigned char[brightness_bug_size];
+
+	ret = DfGetRepetitionFrame01(count, depth_buf, depth_buf_size, brightness_buf, brightness_bug_size);
 
 	DfDisconnectNet();
 
@@ -1690,6 +1778,87 @@ int get_frame_test(const char* ip, const char* frame_path)
 	return 1;
 }
 
+int get_frame_04_repetition(const char* ip, int count, const char* frame_path)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnect(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+	int width, height;
+	int rgb_width, rgb_height;
+	DfGetGrayCameraResolution(&width, &height);
+	DfGetRGBCameraResolution(&rgb_width, &rgb_height);
+
+
+	ret = DfGetCalibrationParam(calibration_param_);
+
+	int image_size = width * height;
+	int rgb_image_size = rgb_width * rgb_height;
+
+	int depth_buf_size = image_size * 1 * 4;
+	float* depth_buf = (float*)(new char[depth_buf_size]);
+
+	int brightness_bug_size = image_size;
+	unsigned char* brightness_buf = new unsigned char[brightness_bug_size];
+
+	int color_brightness_buf_size = rgb_image_size * 3;
+	unsigned char* color_brightness_buf = new unsigned char[color_brightness_buf_size];
+
+	cv::Mat depthTemp(height, width, CV_32F, depth_buf);
+	cv::Mat brightnessTemp(height, width, CV_8U, brightness_buf);
+	cv::Mat colorBrightnessTemp(rgb_height, rgb_width, CV_8UC3, color_brightness_buf);
+	cv::Mat colorBrightnessResult(rgb_height / 2, rgb_width / 2, CV_8UC3);
+	cv::Mat RGBDepthTemp(colorBrightnessResult.size(), CV_32F, cv::Scalar(0));
+
+	ret = DfGetRepetitionFrame04(count, depth_buf, depth_buf_size, brightness_buf, brightness_bug_size, color_brightness_buf, color_brightness_buf_size, colorBrightnessResult.data, colorBrightnessResult.rows * colorBrightnessResult.cols * 3, (float*)RGBDepthTemp.data, RGBDepthTemp.rows * RGBDepthTemp.cols);
+
+	DfDisconnect(ip);
+
+	save_frame(height, width, depth_buf, brightness_buf, frame_path);
+
+	/****************************保存点云*********************************/
+	// 先转换得到正确的RGB坐标系需要原始深度图，RGB resolution，RGB的内参和旋转
+	cv::Mat camera_intrinsic_temp(3, 3, CV_32F, calibration_param_.camera_intrinsic);
+	cv::Mat rgb_camera_intrinsic_temp(3, 3, CV_32F, calibration_param_.rgb_camera_intrinsic);
+	cv::Mat l2rgb_r_temp(3, 3, CV_32F, calibration_param_.rotation_matrix);
+	cv::Mat l2rgb_t_temp(3, 1, CV_32F, calibration_param_.translation_matrix);
+
+	// 然后对内参进行修正
+	rgb_camera_intrinsic_temp.at<float>(0, 0) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(1, 1) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(0, 2) /= 2.;
+	rgb_camera_intrinsic_temp.at<float>(1, 2) /= 2.;
+
+	/****************************保存点云*********************************/
+
+	cv::Mat pointCloud;
+
+	depth_to_point_cloud_map_use_intrinsic(RGBDepthTemp, rgb_camera_intrinsic_temp, pointCloud);
+
+	std::string folder_path = frame_path;
+	std::string pointcloud_path = folder_path + "_pointcloud.ply";
+	std::string rgb_brightness_path = folder_path + "_color.bmp";
+	std::string rgb_depth_path = folder_path + "_depth_of_rgb_camera.tiff";
+	std::string depth2color_path = folder_path + "_depth2color1.tiff";
+
+	std::cout << "pointCloud size" << pointCloud.size() << std::endl;
+
+	SaveBinPointsToPly(pointCloud, pointcloud_path, colorBrightnessResult);
+
+	cv::imwrite(rgb_brightness_path, colorBrightnessResult);
+	cv::imwrite(rgb_depth_path, RGBDepthTemp);
+
+	delete[] depth_buf;
+	delete[] brightness_buf;
+	delete[] color_brightness_buf;
+
+	return 1;
+}
+
 int percentile(cv::Mat& image, int percent)
 {
 	int size = image.rows * image.cols;
@@ -1885,7 +2054,7 @@ int get_raw_02(const char* ip, const char* raw_image_dir)
 
 	int image_size = width * height * sizeof(unsigned short);
 
-	unsigned short* raw_buf = new unsigned short[(long)image_size * capture_num];
+	unsigned short* raw_buf = (unsigned short*)new unsigned char[(long long)image_size * capture_num];
 
 	ret = DfGetCameraRawData02(raw_buf, image_size * capture_num);
 

@@ -306,6 +306,16 @@ bool cuda_init_basic_memory()
 	cudaMemset(d_num_of_pixels_[1], 0, d_image_height_ * 256 * sizeof(unsigned short));
 }
 
+void cuda_clear_repetition_capture_cache()
+{
+	// 初始化unsigned short格式的remap之后的左右目结果
+	for (int i = 0; i < MAX_PATTERNS_NUMBER; i += 1)
+	{
+		CHECK(cudaMemset(d_patterns_list_16bit_[0][i],0,d_image_height_*d_image_width_ * sizeof(unsigned short)));
+		CHECK(cudaMemset(d_patterns_list_16bit_[1][i],0,d_image_height_*d_image_width_ * sizeof(unsigned short)));
+	}
+}
+
 bool cuda_init_basic_memory_hdr()
 {
 	cudaMemset(d_depth_map_, 0, d_image_height_ * d_image_width_ * sizeof(float));
@@ -390,6 +400,37 @@ bool cuda_copy_pattern_to_memory(unsigned short* pattern_ptr, int serial_flag, c
 	
 	return true;
 
+}
+
+bool cuda_copy_repetition_pattern_to_memory(unsigned short* pattern_ptr, int serial_flag, cudaStream_t stream)
+{
+	if (serial_flag < MAX_PATTERNS_NUMBER)
+	{
+		CHECK(cudaMemcpyAsync(d_remap_patterns_list_16bit_[0][serial_flag], pattern_ptr, d_image_height_ * d_image_width_ * sizeof(unsigned short), cudaMemcpyHostToDevice, stream));
+		kernel_remap_repetition_mode << <blocksPerGrid, threadsPerBlock, 0, stream >> > (d_remap_patterns_list_16bit_[0][serial_flag], d_patterns_list_16bit_[0][serial_flag], d_remap_xy_map[0], d_weight_index_map[0], d_weight_map, d_image_width_, d_image_height_);
+	}
+	else if (serial_flag < 2 * MAX_PATTERNS_NUMBER)
+	{
+		LOG(INFO) << "serial_flag - MAX_PATTERNS_NUMBER: " << serial_flag - MAX_PATTERNS_NUMBER;
+		CHECK(cudaMemcpyAsync(d_remap_patterns_list_16bit_[1][serial_flag - MAX_PATTERNS_NUMBER], pattern_ptr, d_image_height_ * d_image_width_ * sizeof(unsigned short), cudaMemcpyHostToDevice, stream));
+		kernel_remap_repetition_mode << <blocksPerGrid, threadsPerBlock, 0, stream >> > (d_remap_patterns_list_16bit_[1][serial_flag - MAX_PATTERNS_NUMBER], d_patterns_list_16bit_[1][serial_flag - MAX_PATTERNS_NUMBER], d_remap_xy_map[1], d_weight_index_map[1], d_weight_map, d_image_width_, d_image_height_);
+	}
+	else
+	{
+		return false;
+	}
+	
+	return true;
+
+}
+
+bool cuda_normalize_repetition_patterns(int count)
+{
+	for (int i = 0; i < MAX_PATTERNS_NUMBER; i += 1)
+	{
+		kernel_normalize_repetition_patterns << <blocksPerGrid, threadsPerBlock >> > (d_patterns_list_16bit_[0][i], d_patterns_list_16bit_[0][i], count, d_image_width_, d_image_height_);
+		kernel_normalize_repetition_patterns << <blocksPerGrid, threadsPerBlock >> > (d_patterns_list_16bit_[1][i], d_patterns_list_16bit_[1][i], count, d_image_width_, d_image_height_);
+	}
 }
 
 bool cuda_copy_decode_map_to_memory(unsigned char* decode_map_ptr)

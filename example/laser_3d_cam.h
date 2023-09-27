@@ -232,6 +232,13 @@ extern "C"
 	//返回值： 类型（int）:返回0表示获取参数成功;否则失败。
 	DF_SDK_API int DfGetParamRadiusFilter(int& use, float& radius, int& num);
 
+	//函数名： DfSetParamRepetitionExposureNum
+	//功能： 设置重复曝光数
+	//输入参数： num(2-10)
+	//输出参数：无
+	//返回值： 类型（int）:返回0表示设置参数成功;否则失败。
+	DF_SDK_API int DfSetParamRepetitionExposureNum(int num);
+
 	//函数名： DfCaptureData
 	//功能： 采集一帧数据并阻塞至返回状态
 	//输入参数： exposure_num（曝光次数）：设置值为1为单曝光，大于1为多曝光模式（具体参数在相机gui中设置）.

@@ -821,6 +821,37 @@ __global__ void kernel_remap(unsigned short* src, unsigned short* dst, short2* m
 	dst[idx] = (int(w.x * v0 + w.y * v1 + w.z * v2 + w.w * v3) + (1 << 14)) >> 15;
 }
 
+__global__ void kernel_remap_repetition_mode(unsigned short* src, unsigned short* dst, short2* map1, ushort* map2, short4* weight, int width, int height)
+{
+	int idx_x = blockDim.x * blockIdx.x + threadIdx.x;
+	int idx_y = blockDim.y * blockIdx.y + threadIdx.y;
+	if (idx_x >= width || idx_y >= height) return;
+	int idx = idx_y * width + idx_x;
+	short2 xy = map1[idx];
+	ushort a = map2[idx] & 1023;
+	short4 w = weight[a];
+	int x = xy.x, y = xy.y;
+	int x0 = x >= 0 && x < width ? x : -1;
+	int x1 = (x + 1) >= 0 && (x + 1) < width ? x + 1 : -1;
+	int y0 = y >= 0 && y < height ? y : -1;
+	int y1 = (y + 1) >= 0 && (y + 1) < height ? y + 1 : -1;
+	unsigned short v0 = x0 >= 0 && y0 >= 0 ? src[y0 * width + x0] : 0;
+	unsigned short v1 = x1 >= 0 && y0 >= 0 ? src[y0 * width + x1] : 0;
+	unsigned short v2 = x0 >= 0 && y1 >= 0 ? src[y1 * width + x0] : 0;
+	unsigned short v3 = x1 >= 0 && y1 >= 0 ? src[y1 * width + x1] : 0;
+	dst[idx] += (int(w.x * v0 + w.y * v1 + w.z * v2 + w.w * v3) + (1 << 14)) >> 15;
+}
+
+__global__ void kernel_normalize_repetition_patterns(unsigned short* src, unsigned short* dst, float repetition_count, int width, int height)
+{
+	int idx_x = blockDim.x * blockIdx.x + threadIdx.x;
+	int idx_y = blockDim.y * blockIdx.y + threadIdx.y;
+	if (idx_x >= width || idx_y >= height) return;
+	int idx = idx_y * width + idx_x;
+
+	dst[idx] = src[idx] / repetition_count + 0.5;
+}
+
 __global__ void kernel_depth_filter_step_1(uint32_t img_height, uint32_t img_width, float depth_threshold, float* const depth_map, float* const depth_map_temp, unsigned char* mask_temp)
 {
 	const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;

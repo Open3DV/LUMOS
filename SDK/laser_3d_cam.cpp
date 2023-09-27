@@ -1317,7 +1317,7 @@ DF_SDK_API int DfGetFrame01HDR(float* depth, int depth_buf_size,
 	{
 		LOG(INFO) << "--";
 	}
-	LOG(INFO) << "GetFrame01";
+	LOG(INFO) << "GetFrame01HDR";
 	assert(depth_buf_size == image_size_ * sizeof(float) * 1);
 	assert(brightness_buf_size == image_size_ * sizeof(char) * 1);
 	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
@@ -1370,6 +1370,76 @@ DF_SDK_API int DfGetFrame01HDR(float* depth, int depth_buf_size,
 	}
 
 	LOG(INFO) << "Get frame01 success";
+	close_socket(g_sock);
+	return DF_SUCCESS;
+}
+
+DF_SDK_API int DfGetRepetitionFrame01(int count, float* depth, int depth_buf_size,
+	unsigned char* brightness, int brightness_buf_size)
+{
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+	LOG(INFO) << "GetRepetitionFrame01";
+	assert(depth_buf_size == image_size_ * sizeof(float) * 1);
+	assert(brightness_buf_size == image_size_ * sizeof(char) * 1);
+	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+	if (ret == DF_FAILED)
+	{
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+
+	ret = send_command(DF_CMD_GET_REPETITION_FRAME_01, g_sock);
+	ret = send_buffer((char*)&token, sizeof(token), g_sock);
+	int command;
+	ret = recv_command(&command, g_sock);
+	if (ret == DF_FAILED)
+	{
+		LOG(ERROR) << "Failed to recv command";
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+	if (command == DF_CMD_OK)
+	{
+		LOG(INFO) << "token checked ok";
+
+		LOG(INFO) << "sending buffer, count=" << count;
+		ret = send_buffer((char*)&count, sizeof(count), g_sock);
+		LOG(INFO) << "count sent";
+
+		LOG(INFO) << "receiving buffer, depth_buf_size=" << depth_buf_size;
+		ret = recv_buffer((char*)depth, depth_buf_size, g_sock);
+		LOG(INFO) << "depth received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, brightness_buf_size=" << brightness_buf_size;
+		ret = recv_buffer((char*)brightness, brightness_buf_size, g_sock);
+		LOG(INFO) << "brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		//brightness = (unsigned char*)depth + depth_buf_size;
+	}
+	else if (command == DF_CMD_REJECT)
+	{
+		LOG(INFO) << "Get frame rejected";
+		close_socket(g_sock);
+		return DF_BUSY;
+	}
+
+	LOG(INFO) << "Get repetition frame01 success";
 	close_socket(g_sock);
 	return DF_SUCCESS;
 }
@@ -1639,6 +1709,103 @@ DF_SDK_API int DfGetFrame04HDR(float* depth, int depth_buf_size,
 	convertDepthToRGBDepth(depth, resize_color_depth, calibration_param_.rotation_matrix, calibration_param_.translation_matrix, calibration_param_.camera_intrinsic, rgb_camera_intrinsic, camera_width_, camera_height_, rgb_camera_width_ / 2, rgb_camera_height_ / 2);
 
 	LOG(INFO) << "Get frame04 success";
+	close_socket(g_sock);
+	return DF_SUCCESS;
+}
+
+DF_SDK_API int DfGetRepetitionFrame04(int count, float* depth, int depth_buf_size,
+	unsigned char* brightness, int brightness_buf_size, unsigned char* color_brightness, int color_brightness_buf_size, unsigned char* resize_color_brightness, int resize_color_brightness_buf_size, float* resize_color_depth, int resize_color_depth_buf_size)
+{
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+	LOG(INFO) << "DfGetRepetitionFrame04";
+	assert(depth_buf_size == image_size_ * sizeof(float) * 1);
+	assert(brightness_buf_size == image_size_ * sizeof(char) * 1);
+	assert(color_brightness_buf_size == rgb_image_size_);
+	assert(resize_color_brightness_buf_size == rgb_image_size_ * sizeof(unsigned char) / 4);
+	assert(resize_color_depth_buf_size == rgb_camera_height_ * rgb_camera_width_ * sizeof(float) / 4);
+	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+	if (ret == DF_FAILED)
+	{
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+
+	ret = send_command(DF_CMD_GET_REPETITION_FRAME_04, g_sock);
+	ret = send_buffer((char*)&token, sizeof(token), g_sock);
+	int command;
+	ret = recv_command(&command, g_sock);
+	if (ret == DF_FAILED)
+	{
+		LOG(ERROR) << "Failed to recv command";
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+	if (command == DF_CMD_OK)
+	{
+		LOG(INFO) << "token checked ok";
+
+		LOG(INFO) << "sending buffer, count=" << count;
+		ret = send_buffer((char*)&count, sizeof(count), g_sock);
+		LOG(INFO) << "count sent";
+
+		LOG(INFO) << "receiving buffer, depth_buf_size=" << depth_buf_size;
+		ret = recv_buffer((char*)depth, depth_buf_size, g_sock);
+		LOG(INFO) << "depth received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, brightness_buf_size=" << brightness_buf_size;
+		ret = recv_buffer((char*)brightness, brightness_buf_size, g_sock);
+		LOG(INFO) << "brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, color_brightness_buf_size=" << color_brightness_buf_size;
+		ret = recv_buffer((char*)color_brightness, color_brightness_buf_size, g_sock);
+		LOG(INFO) << "color_brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		//brightness = (unsigned char*)depth + depth_buf_size;
+	}
+	else if (command == DF_CMD_REJECT)
+	{
+		LOG(INFO) << "Get frame rejected";
+		close_socket(g_sock);
+		return DF_BUSY;
+	}
+
+	undistortRGBBrightnessMap(color_brightness);
+
+	resizeRGBImageToHalf(color_brightness, rgb_camera_width_, rgb_camera_height_, resize_color_brightness);
+
+	LOG(INFO) << "resizeRGBImageToHalf DONE";
+
+	float rgb_camera_intrinsic[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	rgb_camera_intrinsic[0] = calibration_param_.rgb_camera_intrinsic[0] / 2.;
+	rgb_camera_intrinsic[2] = calibration_param_.rgb_camera_intrinsic[2] / 2.;
+	rgb_camera_intrinsic[4] = calibration_param_.rgb_camera_intrinsic[4] / 2.;
+	rgb_camera_intrinsic[5] = calibration_param_.rgb_camera_intrinsic[5] / 2.;
+	rgb_camera_intrinsic[8] = 1.;
+
+	convertDepthToRGBDepth(depth, resize_color_depth, calibration_param_.rotation_matrix, calibration_param_.translation_matrix, calibration_param_.camera_intrinsic, rgb_camera_intrinsic, camera_width_, camera_height_, rgb_camera_width_ / 2, rgb_camera_height_ / 2);
+
+	LOG(INFO) << "Get repetition frame04 success";
 	close_socket(g_sock);
 	return DF_SUCCESS;
 }
@@ -3683,6 +3850,23 @@ DF_SDK_API int DfSetParamMultipleExposureModel(int model)
 	return DF_SUCCESS;
 }
 
+//函数名： DfSetParamRepetitionExposureNum
+//功能： 设置重复曝光数
+//输入参数： num(2-10)
+//输出参数：无
+//返回值： 类型（int）:返回0表示设置参数成功;否则失败。
+DF_SDK_API int DfSetParamRepetitionExposureNum(int num)
+{
+	if (num < 2 || num >10)
+	{
+		return DF_ERROR_INVALID_PARAM;
+	}
+
+	repetition_exposure_model_ = num;
+
+	return DF_SUCCESS;
+}
+
 //函数名： DfSelectCamera
 //功能： 设置拍摄所用的相机，采集时，会根据选择的相机返回对于应拍照数据（分辨率、内参、通道数、亮度图、深度图）
 //输入参数：camera_select(GrayCamera：左目灰色相机、RGBCamera：中间彩色相机)
@@ -3752,6 +3936,26 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 			else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
 			{
 				ret = DfGetFrame04HDR(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
+				if (DF_SUCCESS != ret)
+				{
+					return ret;
+				}
+			}
+
+		}
+		case 2:
+		{
+			if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
+			{
+				ret = DfGetRepetitionFrame01(repetition_exposure_model_, depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_);
+				if (DF_SUCCESS != ret)
+				{
+					return ret;
+				}
+			}
+			else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+			{
+				ret = DfGetRepetitionFrame04(repetition_exposure_model_, depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
 				if (DF_SUCCESS != ret)
 				{
 					return ret;

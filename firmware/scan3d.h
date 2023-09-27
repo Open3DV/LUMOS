@@ -53,9 +53,13 @@ public:
 
     int captureFrame04MixedHDR();
 
+    int captureFrame04Repetition(int repetition_count);
+
     int captureFrame08();
 
     int captureFrame08MixedHDR();
+
+    int captureFrame08Repetition(int repetition_count);
 
     int captureFrame03();
 

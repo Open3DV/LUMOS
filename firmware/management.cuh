@@ -115,6 +115,8 @@ bool cuda_free_basic_memory();
 
 bool cuda_init_basic_memory();
 
+void cuda_clear_repetition_capture_cache();
+
 bool cuda_init_basic_memory_hdr();
 
 /**********************************************************************/
@@ -124,6 +126,10 @@ bool cuda_copy_pattern_to_memory(unsigned char* pattern_ptr, int serial_flag);
 bool cuda_copy_pattern_to_memory(unsigned char* pattern_ptr, int serial_flag, cudaStream_t stream);
 
 bool cuda_copy_pattern_to_memory(unsigned short* pattern_ptr, int serial_flag, cudaStream_t stream);
+
+bool cuda_copy_repetition_pattern_to_memory(unsigned short* pattern_ptr, int serial_flag, cudaStream_t stream);
+
+bool cuda_normalize_repetition_patterns(int count);
 
 bool cuda_copy_decode_map_to_memory(unsigned char* decode_map_ptr);
 

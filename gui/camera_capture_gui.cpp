@@ -227,6 +227,7 @@ bool CameraCaptureGui::initializeFunction()
 	connect(ui.doubleSpinBox_depth_filter, SIGNAL(valueChanged(double)), this, SLOT(do_doubleSpin_depth_fisher(double)));
 	connect(ui.doubleSpinBox_gain, SIGNAL(valueChanged(double)), this, SLOT(do_doubleSpin_gain(double)));
 	connect(ui.doubleSpinBox_gamma, SIGNAL(valueChanged(double)), this, SLOT(do_doubleSpin_gamma(double)));
+	connect(ui.spinBox_repetition_count, SIGNAL(valueChanged(int)), this, SLOT(do_spin_repetition_count_changed(int)));
 
 	connect(ui.spinBox_led, SIGNAL(valueChanged(int)), this, SLOT(do_spin_led_current_changed(int)));
 	connect(ui.spinBox_camera_exposure, SIGNAL(valueChanged(int)), this, SLOT(do_spin_camera_exposure_changed(int)));
@@ -237,6 +238,10 @@ bool CameraCaptureGui::initializeFunction()
 	connect(ui.radioButton_depth_grey, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_gray_depth(bool)));
 	connect(ui.radioButton_calibration, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_calibration(bool)));
 	connect(ui.radioButton_bright_raw, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_bright_raw(bool)));
+
+	connect(ui.radioButton_single_exposure, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_signal(bool)));
+	connect(ui.radioButton_hdr_exposure, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_hdr(bool)));
+	connect(ui.radioButton_repetition_exposure, SIGNAL(toggled(bool)), this, SLOT(do_QRadioButton_toggled_repetition(bool)));
 	 
 	connect(ui.comboBox_ip, SIGNAL(activated(int)), this, SLOT(do_comboBox_activated_ip(int))); 
 	connect(ui.checkBox_over_exposure, SIGNAL(toggled(bool)), this, SLOT(do_checkBox_toggled_over_exposure(bool)));
@@ -576,6 +581,11 @@ void CameraCaptureGui::setUiData()
 	case 1:
 	{
 		ui.radioButton_hdr_exposure->setChecked(true);
+	}
+	break;
+	case 2:
+	{
+		ui.radioButton_repetition_exposure->setChecked(true);
 	}
 	break;
 	default:
@@ -1543,6 +1553,10 @@ void CameraCaptureGui::captureOneFrameBaseThread(bool hdr)
 	{
 		exposure_model_ = EXPOSURE_MODEL_HDR_;
 	}
+	else if (ui.radioButton_repetition_exposure->isChecked())
+	{
+		exposure_model_ = EXPOSURE_MODEL_REPETITION_;
+	}
 
 	switch (exposure_model_)
 	{
@@ -1574,6 +1588,23 @@ void CameraCaptureGui::captureOneFrameBaseThread(bool hdr)
 		}
 	}
 	break;
+	case EXPOSURE_MODEL_REPETITION_:
+		{
+			//重复曝光
+			exposure_num = processing_gui_settings_data_.Instance().repetition_count;
+
+			ret_code = DfSetParamMultipleExposureModel(2);
+			if (0 != ret_code)
+			{
+				std::cout << "Set Multiple Exposure Model Error;" << std::endl;
+			}
+
+			ret_code = DfSetParamRepetitionExposureNum(exposure_num);
+			if (0 != ret_code)
+			{
+				std::cout << "Set Multiple Exposure Model Error;" << std::endl;
+			}
+		}
 	break;
 
 	default:
@@ -1827,6 +1858,10 @@ bool CameraCaptureGui::captureOneFrameData()
 	{ 
 		exposure_model_ = EXPOSURE_MODEL_HDR_;
 	}
+	else if (ui.radioButton_repetition_exposure->isChecked())
+	{
+		exposure_model_ = EXPOSURE_MODEL_REPETITION_;
+	}
 
 	int ret_code = 0;
 
@@ -1862,6 +1897,23 @@ bool CameraCaptureGui::captureOneFrameData()
 			//ret_code = DfGetFrameHdr((float*)depth.data, depth_buf_size, (uchar*)brightness.data, brightness_bug_size);
 		}
 		break;
+	case EXPOSURE_MODEL_REPETITION_:
+		{
+			//重复曝光
+			exposure_num = processing_gui_settings_data_.Instance().repetition_count;
+
+			ret_code = DfSetParamMultipleExposureModel(2);
+			if (0 != ret_code)
+			{
+				std::cout << "Set Multiple Exposure Model Error;" << std::endl;
+			}
+
+			ret_code = DfSetParamRepetitionExposureNum(exposure_num);
+			if (0 != ret_code)
+			{
+				std::cout << "Set Multiple Exposure Model Error;" << std::endl;
+			}
+		}
 		break;
 
 		default:
@@ -3135,6 +3187,36 @@ void CameraCaptureGui::do_QRadioButton_toggled_bright_raw(bool state)
 		radio_button_flag_ = SELECT_BRIGHT_RAW_FLAG_;
 		//qDebug() << "state: " << radio_button_flag_;
 		showImage();
+	}
+}
+
+void CameraCaptureGui::do_QRadioButton_toggled_signal(bool state)
+{
+	if (state)
+	{
+		exposure_model_ = EXPOSURE_MODEL_SINGLE_;
+
+		processing_gui_settings_data_.Instance().exposure_model = exposure_model_;
+	}
+}
+
+void CameraCaptureGui::do_QRadioButton_toggled_hdr(bool state)
+{
+	if (state)
+	{
+		exposure_model_ = EXPOSURE_MODEL_HDR_;
+
+		processing_gui_settings_data_.Instance().exposure_model = exposure_model_;
+	}
+}
+
+void CameraCaptureGui::do_QRadioButton_toggled_repetition(bool state)
+{
+	if (state)
+	{
+		exposure_model_ = EXPOSURE_MODEL_REPETITION_;
+
+		processing_gui_settings_data_.Instance().exposure_model = exposure_model_;
 	}
 }
 

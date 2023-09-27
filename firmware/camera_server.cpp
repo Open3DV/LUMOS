@@ -726,6 +726,97 @@ int handle_cmd_get_frame_01_hdr_parallel(int client_sock)
     return DF_SUCCESS;
 }
 
+int handle_cmd_get_repetition_frame_01(int client_sock)
+{
+    if (check_token(client_sock) == DF_FAILED)
+    {
+        return DF_FAILED;
+    }
+
+    int repetition_count;
+
+    int ret = recv_buffer(client_sock, (char*)(&repetition_count), sizeof(int));
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!\n";
+        return DF_FAILED;
+    }
+
+    if (repetition_count < 0 || repetition_count > 10)
+    {
+        LOG(INFO) << "repetition count out of range, close this connection!\n";
+        return DF_FAILED;
+    }
+
+    int depth_buf_size = camera_width_ * camera_height_ * 4;
+    float* depth_map = new float[depth_buf_size];
+
+    int brightness_buf_size = camera_width_ * camera_height_ * 1;
+    unsigned char* brightness = new unsigned char[brightness_buf_size]; 
+
+
+    LOG(INFO) << "captureFrame08Repetition";
+    ret = scan3d_.captureFrame08Repetition(repetition_count);
+    if (DF_SUCCESS != ret)
+    {
+        LOG(ERROR) << "captureFrame08Repetition code: " << ret;
+    }
+
+    LOG(INFO) << "Reconstruct captureFrame08Repetition Finished!";
+    scan3d_.copyBrightnessData(brightness);
+    scan3d_.copyDepthData(depth_map);
+
+
+    LOG(INFO) << "copy depth";
+
+    if(1 == system_config_settings_machine_.Instance().firwmare_param_.use_bilateral_filter)
+    { 
+        cv::Mat depth_mat(camera_height_, camera_width_, CV_32FC1, depth_map);
+        cv::Mat depth_bilateral_mat(camera_height_, camera_width_, CV_32FC1, cv::Scalar(0));
+        cv::bilateralFilter(depth_mat, depth_bilateral_mat, system_config_settings_machine_.Instance().firwmare_param_.bilateral_filter_param_d, 2.0, 10.0); 
+        memcpy(depth_map,(float*)depth_bilateral_mat.data,depth_buf_size);
+        LOG(INFO) << "Bilateral"; 
+    }
+
+    LOG(INFO) << "start send depth, buffer_size= " << depth_buf_size;
+    ret = send_buffer(client_sock, (const char*)depth_map, depth_buf_size);
+    LOG(INFO) << "depth ret= " << ret;
+
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!";
+        // delete [] buffer;
+        delete[] depth_map;
+        delete[] brightness;
+
+        return DF_FAILED;
+    }
+
+    LOG(INFO) << "start send brightness, buffer_size= " << brightness_buf_size;
+    ret = send_buffer(client_sock, (const char*)brightness, brightness_buf_size);
+    LOG(INFO) << "brightness ret= " << ret;
+
+    LOG(INFO) << "Send captureFrame08Repetition";
+
+    if (ret == DF_FAILED)
+    {
+        printf("send error, close this connection!\n");
+        // delete [] buffer;
+        delete[] depth_map;
+        delete[] brightness;
+
+
+        return DF_FAILED;
+    }
+    LOG(INFO) << "frame sent!";
+    // delete [] buffer;
+    delete[] depth_map;
+    delete[] brightness;
+
+
+    return DF_SUCCESS;
+}
+
 int handle_cmd_get_frame_04_hdr_parallel(int client_sock)
 {
     if (check_token(client_sock) == DF_FAILED)
@@ -820,6 +911,115 @@ int handle_cmd_get_frame_04_hdr_parallel(int client_sock)
     // delete [] buffer;
     delete[] depth_map;
     delete[] brightness;
+    delete[] color_brightness;
+
+    return DF_SUCCESS;
+}
+
+int handle_cmd_get_repetition_frame_04(int client_sock)
+{
+    if (check_token(client_sock) == DF_FAILED)
+    {
+        return DF_FAILED;
+    }
+
+    int repetition_count;
+
+    int ret = recv_buffer(client_sock, (char*)(&repetition_count), sizeof(int));
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!\n";
+        return DF_FAILED;
+    }
+
+    if (repetition_count < 0 || repetition_count > 10)
+    {
+        LOG(INFO) << "repetition count out of range, close this connection!\n";
+        return DF_FAILED;
+    }
+
+    int depth_buf_size = camera_width_ * camera_height_ * 4;
+    float* depth_map = new float[depth_buf_size];
+
+    int brightness_buf_size = camera_width_ * camera_height_ * 1;
+    unsigned char* brightness = new unsigned char[brightness_buf_size];
+
+    int color_brightness_buf_size = rgb_camera_width_ * rgb_camera_height_ * 3;
+    unsigned char* color_brightness = new unsigned char[color_brightness_buf_size];
+
+    LOG(INFO) << "captureFrame04Repetition";
+    ret = scan3d_.captureFrame04Repetition(repetition_count);
+    if (DF_SUCCESS != ret)
+    {
+        LOG(ERROR) << "captureFrame04Repetition code: " << ret;
+    }
+
+    LOG(INFO) << "Reconstruct captureFrame04Repetition Finished!";
+    scan3d_.copyBrightnessData(brightness);
+    scan3d_.copyColorBrightnessData(color_brightness);
+    scan3d_.copyDepthData(depth_map);
+
+    LOG(INFO) << "copy depth";
+
+    if(1 == system_config_settings_machine_.Instance().firwmare_param_.use_bilateral_filter)
+    { 
+        cv::Mat depth_mat(camera_height_, camera_width_, CV_32FC1, depth_map);
+        cv::Mat depth_bilateral_mat(camera_height_, camera_width_, CV_32FC1, cv::Scalar(0));
+        cv::bilateralFilter(depth_mat, depth_bilateral_mat, system_config_settings_machine_.Instance().firwmare_param_.bilateral_filter_param_d, 2.0, 10.0); 
+        memcpy(depth_map,(float*)depth_bilateral_mat.data,depth_buf_size);
+        LOG(INFO) << "Bilateral"; 
+    }
+
+    LOG(INFO) << "start send depth, buffer_size= " << depth_buf_size;
+    ret = send_buffer(client_sock, (const char*)depth_map, depth_buf_size);
+    LOG(INFO) << "depth ret= " << ret;
+
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!";
+        // delete [] buffer;
+        delete[] depth_map;
+        delete[] brightness;
+        delete[] color_brightness;
+
+        return DF_FAILED;
+    }
+
+    LOG(INFO) << "start send brightness, buffer_size= " << brightness_buf_size;
+    ret = send_buffer(client_sock, (const char*)brightness, brightness_buf_size);
+    LOG(INFO) << "brightness ret= " << ret;
+
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!";
+        // delete [] buffer;
+        delete[] depth_map;
+        delete[] brightness;
+        delete[] color_brightness;
+
+        return DF_FAILED;
+    }
+
+    LOG(INFO) << "start send color_brightness, buffer_size= " << color_brightness_buf_size;
+    ret = send_buffer(client_sock, (const char*)color_brightness, color_brightness_buf_size);
+    LOG(INFO) << "color_brightness ret= " << ret;
+
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!";
+        // delete [] buffer;
+        delete[] depth_map;
+        delete[] brightness;
+        delete[] color_brightness;
+
+        return DF_FAILED;
+    }
+    
+    LOG(INFO) << "frame sent!";
+    // delete [] buffer;
+    delete[] depth_map;
+    delete[] brightness;
+
     delete[] color_brightness;
 
     return DF_SUCCESS;
@@ -1472,7 +1672,6 @@ int handle_cmd_get_param_generate_brightness(int client_sock)
     return DF_SUCCESS;
 }
 
-//�����������Ȳ���
 int handle_cmd_set_param_generate_brightness(int client_sock)
 {
     if (check_token(client_sock) == DF_FAILED)
@@ -2183,6 +2382,10 @@ int handle_commands(int client_sock)
         LOG(INFO) << "DF_CMD_GET_FRAME_01_HDR";
         ret = handle_cmd_get_frame_01_hdr_parallel(client_sock);
         break;
+    case DF_CMD_GET_REPETITION_FRAME_01:
+        LOG(INFO) << "DF_CMD_GET_REPETITION_FRAME_01";
+        ret = handle_cmd_get_repetition_frame_01(client_sock);
+        break;
     case DF_CMD_GET_FRAME_TEST:
         LOG(INFO) << "DF_CMD_GET_FRAME_TEST";
         ret = handle_cmd_get_frame_test_parallel(client_sock);
@@ -2198,6 +2401,10 @@ int handle_commands(int client_sock)
     case DF_CMD_GET_FRAME_04_HDR:
     LOG(INFO) << "DF_CMD_GET_FRAME_04_HDR";
     ret = handle_cmd_get_frame_04_hdr_parallel(client_sock);
+    break;
+    case DF_CMD_GET_REPETITION_FRAME_04:
+    LOG(INFO) << "DF_CMD_GET_REPETITION_FRAME_04";
+    ret = handle_cmd_get_repetition_frame_04(client_sock);
     break;
     case DF_CMD_HEARTBEAT:
         LOG(INFO) << "DF_CMD_HEARTBEAT";

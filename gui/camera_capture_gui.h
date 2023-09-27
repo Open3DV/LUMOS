@@ -162,6 +162,12 @@ private slots:
 
 	void do_QRadioButton_toggled_bright_raw(bool state);
 
+	void do_QRadioButton_toggled_signal(bool state);
+
+	void do_QRadioButton_toggled_hdr(bool state);
+
+	void do_QRadioButton_toggled_repetition(bool state);
+
 	void do_QRadioButton_toggled_generate_brightness_default(bool state);
 
 	void do_QRadioButton_toggled_generate_brightness_illumination(bool state);
