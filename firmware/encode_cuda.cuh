@@ -15,6 +15,9 @@
 #include "easylogging++.h"
 
 #define DEPTH_DIFF_NUM_THRESHOLD 3
+#define O_KERNEL_WIDTH 9
+#define O_TILE_WIDTH 16
+#define BLOCK_WIDTH (O_TILE_WIDTH + O_KERNEL_WIDTH - 1)
 
 //kernel
 __global__ void kernel_decode_gray_code_8bit(int width, int height, unsigned char* decode_map, unsigned char* d_in_dark, unsigned char* d_in_bright, unsigned char* d_in_0, unsigned char* d_in_1, unsigned char* d_in_2, unsigned char* d_in_3, unsigned char* d_in_4, unsigned char* d_in_5, unsigned char* d_in_6, unsigned char* d_in_7, unsigned char* d_out, unsigned char* mask_niose);
@@ -82,5 +85,8 @@ __global__ void kernel_removal_points_base_mask(uint32_t img_height, uint32_t im
 __global__ void kernel_fix_unwrap_phase(int width, int height, unsigned short* d_in_unwrap_phase);
 
 __global__ void kernel_fix_eight_step_unwrap_phase(int width, int height, unsigned short* d_in_unwrap_phase);
+
+__global__ void kernel_filter_radius_outlier_removal_shared(uint32_t img_height, uint32_t img_width, float* const point_cloud_map,
+    unsigned char* remove_mask, float dot_spacing_2, float r_2, int threshold);
 
 #endif

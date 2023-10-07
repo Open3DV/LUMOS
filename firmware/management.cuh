@@ -227,7 +227,7 @@ bool cuda_set_camera_gamma(float gamma);
 
 bool cuda_get_camera_gamma(float& gamma);
 
-//bool 
+void cuda_remove_points_base_radius_filter(float dot_spacing,float radius,int threshold_num);
 
 //bool cuda_compute_phase_shift(int serial_flag);
 

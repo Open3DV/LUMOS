@@ -1194,3 +1194,131 @@ __global__ void kernel_fix_eight_step_unwrap_phase(int width, int height, unsign
 
 
 }
+
+__global__ void kernel_filter_radius_outlier_removal_shared(uint32_t img_height, uint32_t img_width, float* const point_cloud_map,
+    unsigned char* remove_mask, float dot_spacing_2, float r_2, int threshold)
+{
+
+    const unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    const unsigned int idy = blockIdx.y * blockDim.y + threadIdx.y;
+
+    const unsigned int serial_id = idy * img_width + idx;
+  
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+    int row_o = blockIdx.y * O_TILE_WIDTH + ty;
+    int col_o = blockIdx.x * O_TILE_WIDTH + tx;
+ 
+
+    int maskwidth = O_KERNEL_WIDTH;  
+    int row_i = row_o - maskwidth / 2;
+    int col_i = col_o - maskwidth / 2; 
+    __shared__ float Ns[BLOCK_WIDTH][BLOCK_WIDTH * 3];
+
+    if ((row_i >= 0) && (row_i < img_height) &&
+        (col_i >= 0) && (col_i < img_width))
+    {
+        int id = 3 * (row_i * img_width + col_i);
+        Ns[ty][3 * tx + 0] = point_cloud_map[id + 0];
+        Ns[ty][3 * tx + 1] = point_cloud_map[id + 1];
+        Ns[ty][3 * tx + 2] = point_cloud_map[id + 2];
+    }
+    else
+    {
+        Ns[ty][3 * tx + 0] = 0.0f;
+        Ns[ty][3 * tx + 1] = 0.0f;
+        Ns[ty][3 * tx + 2] = 0.0f;
+    }
+
+    // int offset = row_o * img_width + col_o;
+ 
+    if ((ty < O_TILE_WIDTH) && (tx < O_TILE_WIDTH))
+    {
+        __syncthreads();
+
+        // offset = row_o * img_width + col_o; 
+
+        int ns_ty = ty + maskwidth / 2;
+        int ns_tx = tx + maskwidth / 2;
+
+        // remove_mask[row_o * img_width + col_o] = 255;
+		uchar mask_val = 255;
+        int num = 0;
+        float x_o = Ns[ns_ty][3 * ns_tx + 0];
+        float y_o = Ns[ns_ty][3 * ns_tx + 1];
+        float z_o = Ns[ns_ty][3 * ns_tx + 2];
+         //if (row_o == 1024 && col_o == 1024)
+         //{
+         //	printf("x_o:%f\n", x_o);
+         //	printf("y_o:%f\n", y_o);
+         //	printf("z_o:%f\n", z_o);
+         //   float x_test = point_cloud_map[3* offset + 0];
+         //   float y_test = point_cloud_map[3 * offset + 1];
+         //   float z_test = point_cloud_map[3 * offset + 2];
+         //  printf("x_0:%f\n", x_test);
+         //  printf("y_0:%f\n", y_test);
+         //  printf("z_0:%f\n", z_test);
+         //}
+
+        if (z_o <= 0)
+        {
+            // remove_mask[row_o * img_width + col_o] = 0;
+			mask_val = 0;
+        }
+        else
+        {
+  
+            for (int r = -maskwidth / 2; r <= maskwidth / 2; r++)
+            {
+                for (int c = -maskwidth / 2; c <= maskwidth / 2; c++)
+                {
+
+                    int nx_r = ns_ty + r;
+                    int nx_c = ns_tx + c;
+
+                    if (nx_r < 0 || nx_c < 0)
+                    {
+                        continue;
+                    }
+
+                    if (nx_r >= BLOCK_WIDTH || nx_c >= BLOCK_WIDTH)
+                    {
+                        continue;
+                    }
+
+                    // float space2 = (c * c + r * r) * dot_spacing_2;
+ 
+
+                    // int pos = r * img_width + c; 
+                    if (Ns[nx_r][3 * nx_c + 2] > 0)
+                    {
+           
+                        float dx = Ns[nx_r][3 * nx_c + 0] - x_o;
+                        float dy = Ns[nx_r][3 * nx_c + 1] - y_o;
+                        float dz = Ns[nx_r][3 * nx_c + 2] - z_o;  
+     
+                        float d2 = dx * dx + dy * dx + dz * dz; 
+
+                        // if (radius > dist)
+                        if (r_2 > d2)
+                        {
+                            num++;
+                        }
+                    }
+                }
+            }
+
+            if (num < threshold)
+            {
+                // remove_mask[row_o * img_width + col_o] = 0;
+				mask_val = 0;
+            }
+        }
+
+		// __syncthreads();
+        remove_mask[row_o * img_width + col_o] = mask_val;
+    }
+  
+
+
+}

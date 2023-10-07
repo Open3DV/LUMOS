@@ -976,35 +976,19 @@ bool cuda_hdr_sort_phase(int serial_flag)
 
 void cuda_remove_points_base_radius_filter(float dot_spacing,float radius,int threshold_num)
 {
-
-	// cv::Mat pointcloud(1200, 1920, CV_32FC3, cv::Scalar(0));
-	// CHECK(cudaMemcpy(pointcloud.data, d_point_cloud_map_, 3 * h_image_height_ * h_image_width_ * sizeof(float), cudaMemcpyDeviceToHost));
-	// std::vector<cv::Mat> channels;
-	// cv::split(pointcloud, channels);
-	// cv::imwrite("depth_f.tiff", channels[2]);
-
-	cudaDeviceSynchronize();
-	LOG(INFO)<<"kernel_depth_to_pointcloud:"; 
+	LOG(INFO)<< "radius filter start: "; 
 	kernel_depth_to_pointcloud << <blocksPerGrid, threadsPerBlock >> > (h_image_width_,h_image_height_,d_Q,d_depth_map_,d_pointcloud_map_);
-
-	cudaDeviceSynchronize();
-
-	LOG(INFO) << "remove_base_radius_filter start:";
-
-	// //相机像素为5.4um、焦距12mm。dot_spacing = 5.4*distance/12000 mm，典型值0.54mm（1200）
 
 	float d2 = dot_spacing * dot_spacing;
 	float r2 = radius * radius;
 
-	kernel_filter_radius_outlier_removal<<<blocksPerGrid, threadsPerBlock>>>(h_image_height_, h_image_width_, d_pointcloud_map_, d_mask_map_, d2, r2, threshold_num);
-	cudaDeviceSynchronize();
+	dim3 dimBlock(BLOCK_WIDTH, BLOCK_WIDTH);
+    dim3 dimGrid((d_image_width_ - 1) / O_TILE_WIDTH + 1, (d_image_height_ - 1) / O_TILE_WIDTH + 1, 1);
+    kernel_filter_radius_outlier_removal_shared << <dimGrid, dimBlock >> > (d_image_height_, d_image_width_, d_pointcloud_map_, d_mask_map_, d2, r2, threshold_num);
 
-	LOG(INFO) << "remove start:";
 	kernel_removal_points_base_mask<<<blocksPerGrid, threadsPerBlock>>>(h_image_height_, h_image_width_, d_pointcloud_map_, d_depth_map_, d_mask_map_);
-
 	cudaDeviceSynchronize();
-
-	LOG(INFO)<<"remove_base_radius_filter finished!";
+	LOG(INFO) << "radius filter end ";
 }
 
 bool cuda_set_param_confidence(float val)
