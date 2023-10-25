@@ -14,6 +14,7 @@
 #include "../test/triangulation.h"
 #include "../firmware/protocol.h" 
 #include "../firmware/system_config_settings.h"
+#include "omp.h"
 //#include <configuring_network.h>
 
 #ifdef _WIN32 
@@ -94,6 +95,7 @@ float* undistort_map_x_ = NULL;
 float* undistort_map_y_ = NULL;
 float* distorted_map_x_ = NULL;
 float* distorted_map_y_ = NULL;
+unsigned char* brightness_map_temp = NULL;
 
 LumosCameraSelect lumos_camera_select_ = LumosCameraSelect::GrayCamera;
 
@@ -305,6 +307,42 @@ int undistortRGBBrightnessMap(unsigned char* brightness_map) //最近邻
 	return DF_SUCCESS;
 }
 
+int undistortResizeRGBBrightnessMap(unsigned char* brightness_map) //最近邻
+{
+
+	int nr = rgb_camera_height_;
+	int nc = rgb_camera_width_;
+
+	memset(brightness_map_temp, 0, sizeof(unsigned char) * nr * nc * 3 / 4);
+
+#pragma omp parallel for
+	for (int r = 0; r < nr; r += 2)
+	{
+
+		for (int c = 0; c < nc; c += 2)
+		{
+			int offset = r * nc + c;
+			int resized_offset = r * nc / 4 + c / 2;
+			int distort_x, distort_y;
+			//distortPoint(c, r, distort_x, distort_y);
+			distort_x = distorted_map_x_[offset] / 2 + 0.5;
+			distort_y = distorted_map_y_[offset] / 2 + 0.5;
+			// 进行双线性差值
+			if (distort_x > 0 && distort_x < nc / 2 - 1 && distort_y > 0 && distort_y < nr / 2 - 1)
+			{
+				int distort_offset = distort_y * nc + distort_x;
+				brightness_map_temp[resized_offset * 3] = brightness_map[distort_offset * 3];
+				brightness_map_temp[resized_offset * 3 + 1] = brightness_map[distort_offset * 3 + 1];
+				brightness_map_temp[resized_offset * 3 + 2] = brightness_map[distort_offset * 3 + 2];
+			}
+		}
+
+	}
+
+	memcpy(brightness_map, brightness_map_temp, sizeof(unsigned char) * nr * nc * 3 / 4);
+	return DF_SUCCESS;
+}
+
 int resizeRGBImageToHalf(unsigned char* rgb_brightness_map, int orig_width, int orig_height, unsigned char* output_rgb_brightness_map)
 {
 	int out_width = orig_width / 2;
@@ -312,7 +350,7 @@ int resizeRGBImageToHalf(unsigned char* rgb_brightness_map, int orig_width, int 
 	LOG(INFO) << "out_width: " << out_width;
 	LOG(INFO) << "out_height: " << out_height;
 
-//#pragma omp parallel for
+#pragma omp parallel for
 	for (int row = 0; row < out_height; row += 1)
 	{
 		for (int col = 0; col < out_width; col += 1)
@@ -330,7 +368,7 @@ int resizeRGBImageToHalf(unsigned char* rgb_brightness_map, int orig_width, int 
 bool convertDepthToRGBDepth(float* depth_input_ptr, float* depth_output, float* l2rgb_r_ptr, float* l2rgb_t_ptr, float* camera_intrinsic_ptr, float* rgb_camera_intrinsic_ptr, int width, int height, int rgb_width, int rgb_height)
 {
 	memset(depth_output, 0, sizeof(float) * rgb_width * rgb_height);
-//#pragma omp parallel for
+#pragma omp parallel for
 	for (int row = 0; row < height; row += 1)
 	{
 		//float* depth_input_ptr = depth_input + (long long)row * width;
@@ -595,6 +633,7 @@ DF_SDK_API int DfConnect(const char* camera_id)
 
 	distorted_map_x_ = (float*)(new char[(long long)rgb_camera_width_ * rgb_camera_height_ * 4]);
 	distorted_map_y_ = (float*)(new char[(long long)rgb_camera_width_ * rgb_camera_height_ * 4]);
+	brightness_map_temp = new unsigned char[rgb_camera_width_ * rgb_camera_height_ * 3 / 4];
 
 	float camera_fx = calibration_param_.camera_intrinsic[0];
 	float camera_fy = calibration_param_.camera_intrinsic[4];
@@ -922,6 +961,7 @@ DF_SDK_API int DfDisconnect(const char* camera_id)
 	delete[] undistort_map_y_;
 	delete[] distorted_map_x_;
 	delete[] distorted_map_y_;
+	delete[] brightness_map_temp;
 
 
 	connected_flag_ = false;
@@ -1602,7 +1642,7 @@ DF_SDK_API int DfGetFrame04(float* depth, int depth_buf_size,
 		close_socket(g_sock);
 		return DF_BUSY;
 	}
-
+	
 	undistortRGBBrightnessMap(color_brightness);
 
 	resizeRGBImageToHalf(color_brightness, rgb_camera_width_, rgb_camera_height_, resize_color_brightness);
@@ -1619,6 +1659,94 @@ DF_SDK_API int DfGetFrame04(float* depth, int depth_buf_size,
 	convertDepthToRGBDepth(depth, resize_color_depth, calibration_param_.rotation_matrix, calibration_param_.translation_matrix, calibration_param_.camera_intrinsic, rgb_camera_intrinsic, camera_width_, camera_height_, rgb_camera_width_ / 2, rgb_camera_height_ / 2);
 
 	LOG(INFO) << "Get frame04 success";
+	close_socket(g_sock);
+	return DF_SUCCESS;
+}
+
+DF_SDK_API int DfGetFrame05(float* depth, int depth_buf_size,
+	unsigned char* brightness, int brightness_buf_size, unsigned char* color_brightness, int color_brightness_buf_size, unsigned char* resize_color_brightness, int resize_color_brightness_buf_size, float* resize_color_depth, int resize_color_depth_buf_size)
+{
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+	LOG(INFO) << "GetFrame05";
+	assert(depth_buf_size == image_size_ * sizeof(float) * 1);
+	assert(brightness_buf_size == image_size_ * sizeof(char) * 1);
+	assert(color_brightness_buf_size == rgb_image_size_);
+	assert(resize_color_brightness_buf_size == rgb_image_size_ * sizeof(unsigned char) / 4);
+	assert(resize_color_depth_buf_size == rgb_camera_height_ * rgb_camera_width_ * sizeof(float) / 4);
+	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+	if (ret == DF_FAILED)
+	{
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+
+	ret = send_command(DF_CMD_GET_FRAME_05, g_sock);
+	ret = send_buffer((char*)&token, sizeof(token), g_sock);
+	int command;
+	ret = recv_command(&command, g_sock);
+	if (ret == DF_FAILED)
+	{
+		LOG(ERROR) << "Failed to recv command";
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+	if (command == DF_CMD_OK)
+	{
+		LOG(INFO) << "token checked ok";
+		LOG(INFO) << "receiving buffer, depth_buf_size=" << depth_buf_size;
+		ret = recv_buffer((char*)depth, depth_buf_size, g_sock);
+		LOG(INFO) << "depth received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, brightness_buf_size=" << brightness_buf_size;
+		ret = recv_buffer((char*)brightness, brightness_buf_size, g_sock);
+		LOG(INFO) << "brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		LOG(INFO) << "receiving buffer, color_brightness_buf_size=" << color_brightness_buf_size / 4;
+		ret = recv_buffer((char*)resize_color_brightness, color_brightness_buf_size / 4, g_sock);
+		LOG(INFO) << "color_brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		//brightness = (unsigned char*)depth + depth_buf_size;
+	}
+	else if (command == DF_CMD_REJECT)
+	{
+		LOG(INFO) << "Get frame rejected";
+		close_socket(g_sock);
+		return DF_BUSY;
+	}
+
+	undistortResizeRGBBrightnessMap(color_brightness);
+
+	float rgb_camera_intrinsic[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	rgb_camera_intrinsic[0] = calibration_param_.rgb_camera_intrinsic[0] / 2.;
+	rgb_camera_intrinsic[2] = calibration_param_.rgb_camera_intrinsic[2] / 2.;
+	rgb_camera_intrinsic[4] = calibration_param_.rgb_camera_intrinsic[4] / 2.;
+	rgb_camera_intrinsic[5] = calibration_param_.rgb_camera_intrinsic[5] / 2.;
+	rgb_camera_intrinsic[8] = 1.;
+
+	convertDepthToRGBDepth(depth, resize_color_depth, calibration_param_.rotation_matrix, calibration_param_.translation_matrix, calibration_param_.camera_intrinsic, rgb_camera_intrinsic, camera_width_, camera_height_, rgb_camera_width_ / 2, rgb_camera_height_ / 2);
+
+	LOG(INFO) << "Get frame05 success";
 	close_socket(g_sock);
 	return DF_SUCCESS;
 }
@@ -1693,20 +1821,20 @@ DF_SDK_API int DfGetFrame04HDR(float* depth, int depth_buf_size,
 		return DF_BUSY;
 	}
 
-	undistortRGBBrightnessMap(color_brightness);
+	//undistortRGBBrightnessMap(color_brightness);
 
-	resizeRGBImageToHalf(color_brightness, rgb_camera_width_, rgb_camera_height_, resize_color_brightness);
+	//resizeRGBImageToHalf(color_brightness, rgb_camera_width_, rgb_camera_height_, resize_color_brightness);
 
-	LOG(INFO) << "resizeRGBImageToHalf DONE";
+	//LOG(INFO) << "resizeRGBImageToHalf DONE";
 
-	float rgb_camera_intrinsic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0 };
-	rgb_camera_intrinsic[0] = calibration_param_.rgb_camera_intrinsic[0] / 2.;
-	rgb_camera_intrinsic[2] = calibration_param_.rgb_camera_intrinsic[2] / 2.;
-	rgb_camera_intrinsic[4] = calibration_param_.rgb_camera_intrinsic[4] / 2.;
-	rgb_camera_intrinsic[5] = calibration_param_.rgb_camera_intrinsic[5] / 2.;
-	rgb_camera_intrinsic[8] = 1.;
+	//float rgb_camera_intrinsic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	//rgb_camera_intrinsic[0] = calibration_param_.rgb_camera_intrinsic[0] / 2.;
+	//rgb_camera_intrinsic[2] = calibration_param_.rgb_camera_intrinsic[2] / 2.;
+	//rgb_camera_intrinsic[4] = calibration_param_.rgb_camera_intrinsic[4] / 2.;
+	//rgb_camera_intrinsic[5] = calibration_param_.rgb_camera_intrinsic[5] / 2.;
+	//rgb_camera_intrinsic[8] = 1.;
 
-	convertDepthToRGBDepth(depth, resize_color_depth, calibration_param_.rotation_matrix, calibration_param_.translation_matrix, calibration_param_.camera_intrinsic, rgb_camera_intrinsic, camera_width_, camera_height_, rgb_camera_width_ / 2, rgb_camera_height_ / 2);
+	//convertDepthToRGBDepth(depth, resize_color_depth, calibration_param_.rotation_matrix, calibration_param_.translation_matrix, calibration_param_.camera_intrinsic, rgb_camera_intrinsic, camera_width_, camera_height_, rgb_camera_width_ / 2, rgb_camera_height_ / 2);
 
 	LOG(INFO) << "Get frame04 success";
 	close_socket(g_sock);
@@ -3981,7 +4109,7 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 		}
 		else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
 		{
-			ret = DfGetFrame04(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
+			ret = DfGetFrame05(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
 			if (DF_SUCCESS != ret)
 			{
 				return ret;

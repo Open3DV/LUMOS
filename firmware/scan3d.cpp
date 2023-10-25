@@ -29,8 +29,16 @@ Scan3D::~Scan3D()
 
 }
 
+cudaStream_t stream1_, stream2_, stream3_, stream4_;
+
 int Scan3D::init()
 {
+    cudaError_t result_e;
+
+    result_e = cudaStreamCreate(&stream1_);
+    result_e = cudaStreamCreate(&stream2_);
+    result_e = cudaStreamCreate(&stream3_);
+    result_e = cudaStreamCreate(&stream4_);
     int ret = 0;
     //激光振镜初始化
     projector_ = new AinstecProjector;
@@ -963,31 +971,12 @@ int Scan3D::captureFrame01()
     /****************************cudaStreamCreate***********************/
 
     cudaError_t result_e;
-    cudaStream_t stream1_, stream2_, stream3_, stream4_;
-    result_e = cudaStreamCreate(&stream1_);
-    result_e = cudaStreamCreate(&stream2_);
-    result_e = cudaStreamCreate(&stream3_);
-    result_e = cudaStreamCreate(&stream4_);
     
     LOG(INFO) << "projector start";
     projector_->project();
 
     LOG(INFO) << "grap start";
-    // for (int i = 0; i < 12; i += 1)
-    // {
-    //     if (!camera_left_->grap(host_img_left_[i]) || !camera_right_->grap(host_img_right_[i]))
-    //     {
-    //         camera_left_->streamOff();
-    //         camera_right_->streamOff();
-            
-    //         result_e = cudaStreamDestroy(stream1_);
-    //         result_e = cudaStreamDestroy(stream2_);
-    //         result_e = cudaStreamDestroy(stream3_);
-    //         result_e = cudaStreamDestroy(stream4_);
-            
-    //         return DF_ERROR_CAMERA_GRAP;
-    //     }
-    // }
+
 
     for (int j = 0; j < 14; j += 1)
     {
@@ -1008,11 +997,6 @@ int Scan3D::captureFrame01()
         {
             camera_left_->streamOff();
             camera_right_->streamOff();
-            
-            result_e = cudaStreamDestroy(stream1_);
-            result_e = cudaStreamDestroy(stream2_);
-            result_e = cudaStreamDestroy(stream3_);
-            result_e = cudaStreamDestroy(stream4_);
             
             return DF_ERROR_CAMERA_GRAP;
         }
@@ -1116,16 +1100,17 @@ int Scan3D::captureFrame01()
     cuda_copy_depth_from_memory(buff_depth_);
     cuda_copy_brightness_from_memory(buff_brightness_);
 
-    result_e = cudaStreamDestroy(stream1_);
-    result_e = cudaStreamDestroy(stream2_);
-    result_e = cudaStreamDestroy(stream3_);
-    result_e = cudaStreamDestroy(stream4_);
-
     return DF_SUCCESS;
 }
 
 int Scan3D::captureFrame04()
 {
+    if (!camera_rgb_->streamOn())
+    {
+        LOG(INFO) << "rgb camera stream on error! ";
+        camera_rgb_->streamOff();
+        return DF_ERROR_CAMERA_STREAM;
+    }
     projector_->setProjectorExposure(camera_exposure_);
     LOG(INFO) << "start init basic memory";
     cuda_init_basic_memory();
@@ -1150,31 +1135,12 @@ int Scan3D::captureFrame04()
     /****************************cudaStreamCreate***********************/
 
     cudaError_t result_e;
-    cudaStream_t stream1_, stream2_, stream3_, stream4_;
-    result_e = cudaStreamCreate(&stream1_);
-    result_e = cudaStreamCreate(&stream2_);
-    result_e = cudaStreamCreate(&stream3_);
-    result_e = cudaStreamCreate(&stream4_);
+
     
     LOG(INFO) << "projector start";
     projector_->project();
 
     LOG(INFO) << "grap start";
-    // for (int i = 0; i < 12; i += 1)
-    // {
-    //     if (!camera_left_->grap(host_img_left_[i]) || !camera_right_->grap(host_img_right_[i]))
-    //     {
-    //         camera_left_->streamOff();
-    //         camera_right_->streamOff();
-            
-    //         result_e = cudaStreamDestroy(stream1_);
-    //         result_e = cudaStreamDestroy(stream2_);
-    //         result_e = cudaStreamDestroy(stream3_);
-    //         result_e = cudaStreamDestroy(stream4_);
-            
-    //         return DF_ERROR_CAMERA_GRAP;
-    //     }
-    // }
 
     for (int j = 0; j < 18; j += 1)
     {
@@ -1204,11 +1170,6 @@ int Scan3D::captureFrame04()
         {
             camera_left_->streamOff();
             camera_right_->streamOff();
-            
-            result_e = cudaStreamDestroy(stream1_);
-            result_e = cudaStreamDestroy(stream2_);
-            result_e = cudaStreamDestroy(stream3_);
-            result_e = cudaStreamDestroy(stream4_);
             
             return DF_ERROR_CAMERA_GRAP;
         }
@@ -1275,17 +1236,10 @@ int Scan3D::captureFrame04()
     camera_left_->streamOff();
     camera_right_->streamOff();
 
-    if (!camera_rgb_->streamOn())
-    {
-        LOG(INFO) << "rgb camera stream on error! ";
-        camera_rgb_->streamOff();
-    }
-    else
-    {
-        camera_rgb_->grap(buff_color_brightness_);
-        camera_rgb_->grap(buff_color_brightness_);
-        camera_rgb_->streamOff();
-    }
+    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->streamOff();
+    
     cudaDeviceSynchronize();
 
     LOG(INFO) << "grap end";
@@ -1323,10 +1277,190 @@ int Scan3D::captureFrame04()
     cuda_copy_depth_from_memory(buff_depth_);
     cuda_copy_brightness_from_memory(buff_brightness_);
 
-    result_e = cudaStreamDestroy(stream1_);
-    result_e = cudaStreamDestroy(stream2_);
-    result_e = cudaStreamDestroy(stream3_);
-    result_e = cudaStreamDestroy(stream4_);
+
+    return DF_SUCCESS;
+}
+
+int Scan3D::captureFrame05()
+{
+    if (!camera_rgb_->streamOn())
+    {
+        LOG(INFO) << "rgb camera stream on error! ";
+        camera_rgb_->streamOff();
+        return DF_ERROR_CAMERA_STREAM;
+    }
+    projector_->setProjectorExposure(camera_exposure_);
+    LOG(INFO) << "start init basic memory";
+    cuda_init_basic_memory();
+    LOG(INFO) << "finish init basic memory";
+
+    LOG(INFO) << "Stream On:";
+    if (!camera_left_->streamOn())
+    {
+        LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
+        return DF_ERROR_CAMERA_STREAM;
+    }
+    if (!camera_right_->streamOn())
+    {
+        LOG(INFO) << "Stream On Error";
+        camera_left_->streamOff();
+        camera_right_->streamOff();
+        return DF_ERROR_CAMERA_STREAM;
+    }
+
+    /****************************cudaStreamCreate***********************/
+
+    cudaError_t result_e;
+
+    
+    LOG(INFO) << "projector start";
+    projector_->project();
+
+    LOG(INFO) << "grap start";
+
+    for (int j = 0; j < 18; j += 1)
+    {
+
+        int i = 0;
+        if (j < 8)
+        {
+            i = j + 6;
+        }
+        else if (j < 12)
+        {
+            i = j - 8;
+        }
+        else if (j < 16)
+        {
+            i = j + 2;
+        }
+        else
+        {
+            i = j - 12;
+        }
+
+
+        LOG(INFO) << "grap " << i << " image:"; 
+
+        if (!camera_left_->grap(host_img_left_[i]) || !camera_right_->grap(host_img_right_[i]))
+        {
+            camera_left_->streamOff();
+            camera_right_->streamOff();
+            
+            return DF_ERROR_CAMERA_GRAP;
+        }
+
+        LOG(INFO) << "finished!";
+
+        cudaStream_t streamNowLeft = i % 2 == 0 ? stream1_ : stream2_;
+        cudaStream_t streamNowRight = i % 2 == 0 ? stream3_ : stream4_;
+
+        if (i < 4)
+        {
+            streamNowLeft = stream2_;
+            streamNowRight = stream4_;
+        }
+        streamNowRight = streamNowLeft;
+
+        cuda_copy_pattern_to_memory(host_img_left_[i], i, streamNowLeft);
+        cuda_copy_pattern_to_memory(host_img_right_[i], i + MAX_PATTERNS_NUMBER, streamNowRight);
+    }
+
+    cudaDeviceSynchronize();
+    for (int i = 0; i < 18; i += 1)
+    {
+        cudaDeviceSynchronize();
+        LOG(INFO) << "grap " << i << " image:"; 
+        LOG(INFO) << "finished!";
+
+        cudaStream_t streamNowLeft = i % 2 == 0 ? stream1_ : stream2_;
+        cudaStream_t streamNowRight = i % 2 == 0 ? stream3_ : stream4_;
+
+        if (i < 4)
+        {
+            streamNowLeft = stream2_;
+            streamNowRight = stream4_;
+        }
+        streamNowRight = streamNowLeft;
+
+        if (i == 3)
+        {
+            // 计算四步相移
+            cuda_eight_step_phase_shift_16bit(streamNowLeft, streamNowRight);
+            continue;
+        }
+
+        if (i == 5)
+        {
+            // 计算threshold
+            cuda_decode_gray_code_one_by_one_16bit(-1, streamNowLeft, streamNowRight);
+            continue;
+        }
+
+        if (i > 5)
+        {
+            // 格雷码的移位解码
+            cuda_decode_gray_code_one_by_one_16bit(i - 6, streamNowLeft, streamNowRight);
+            if (i == 13)
+            {
+                cuda_code_phase_rectify(streamNowLeft, streamNowRight);
+            }
+            continue;
+        }
+    }
+    
+    camera_left_->streamOff();
+    camera_right_->streamOff();
+
+    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->streamOff();
+
+    cv::Mat rgbImageTemp(rgb_image_height_, rgb_image_width_, CV_8UC3, buff_color_brightness_);
+    cv::Mat resizeTemp;
+    cv::resize(rgbImageTemp, resizeTemp, cv::Size(rgbImageTemp.cols / 2, rgbImageTemp.rows / 2));
+    // resizeTemp.copyTo(rgbImageTemp);
+    memcpy(buff_color_brightness_, resizeTemp.data, rgb_image_height_ * rgb_image_width_ * 3 / 4);
+    
+    cudaDeviceSynchronize();
+
+    LOG(INFO) << "grap end";
+
+    LOG(INFO) << "sort start";
+
+    cuda_code_phase_unwrap(0);//展开
+
+    // cuda_fix_four_step_code_shift(0);
+
+    cuda_code_statistics(0);
+    cuda_code_statistics_to_index(0);
+    cuda_pixels_sort_by_code(0);
+    cuda_code_statistics_to_index(0);
+    cuda_pixels_shear_by_monotonicity(0);
+    cuda_matching(0);
+    cuda_disp_to_depth(0);
+
+    cudaDeviceSynchronize();
+
+    LOG(INFO) << "sort end";
+
+
+
+    LOG(INFO) << "Stream Off";
+    
+    removeOutlierBaseDepthFilter();
+    removeOutlierBaseRadiusFilter();
+    //if (1 != generate_brightness_model_)
+    //{
+    //    captureTextureImage(generate_brightness_model_, generate_brightness_exposure_,buff_brightness_);
+    //}
+
+
+    cuda_copy_depth_from_memory(buff_depth_);
+    cuda_copy_brightness_from_memory(buff_brightness_);
+
 
     return DF_SUCCESS;
 }
@@ -1361,31 +1495,11 @@ int Scan3D::captureFrame08()
     /****************************cudaStreamCreate***********************/
 
     cudaError_t result_e;
-    cudaStream_t stream1_, stream2_, stream3_, stream4_;
-    result_e = cudaStreamCreate(&stream1_);
-    result_e = cudaStreamCreate(&stream2_);
-    result_e = cudaStreamCreate(&stream3_);
-    result_e = cudaStreamCreate(&stream4_);
-    
+
     LOG(INFO) << "projector start";
     projector_->project();
 
     LOG(INFO) << "grap start";
-    // for (int i = 0; i < 12; i += 1)
-    // {
-    //     if (!camera_left_->grap(host_img_left_[i]) || !camera_right_->grap(host_img_right_[i]))
-    //     {
-    //         camera_left_->streamOff();
-    //         camera_right_->streamOff();
-            
-    //         result_e = cudaStreamDestroy(stream1_);
-    //         result_e = cudaStreamDestroy(stream2_);
-    //         result_e = cudaStreamDestroy(stream3_);
-    //         result_e = cudaStreamDestroy(stream4_);
-            
-    //         return DF_ERROR_CAMERA_GRAP;
-    //     }
-    // }
 
     for (int j = 0; j < 18; j += 1)
     {
@@ -1414,11 +1528,6 @@ int Scan3D::captureFrame08()
         {
             camera_left_->streamOff();
             camera_right_->streamOff();
-            
-            result_e = cudaStreamDestroy(stream1_);
-            result_e = cudaStreamDestroy(stream2_);
-            result_e = cudaStreamDestroy(stream3_);
-            result_e = cudaStreamDestroy(stream4_);
             
             return DF_ERROR_CAMERA_GRAP;
         }
@@ -1486,17 +1595,17 @@ int Scan3D::captureFrame08()
     camera_left_->streamOff();
     camera_right_->streamOff();
 
-    if (!camera_rgb_->streamOn())
-    {
-        LOG(INFO) << "rgb camera stream on error! ";
-        camera_rgb_->streamOff();
-    }
-    else
-    {
-        camera_rgb_->grap(buff_color_brightness_);
-        camera_rgb_->grap(buff_color_brightness_);
-        camera_rgb_->streamOff();
-    }
+    // if (!camera_rgb_->streamOn())
+    // {
+    //     LOG(INFO) << "rgb camera stream on error! ";
+    //     camera_rgb_->streamOff();
+    // }
+    // else
+    // {
+    //     camera_rgb_->grap(buff_color_brightness_);
+    //     camera_rgb_->grap(buff_color_brightness_);
+    //     camera_rgb_->streamOff();
+    // }
     cudaDeviceSynchronize();
 
     LOG(INFO) << "grap end";
@@ -1534,11 +1643,6 @@ int Scan3D::captureFrame08()
     cuda_copy_depth_from_memory(buff_depth_);
     cuda_copy_brightness_from_memory(buff_brightness_);
 
-    result_e = cudaStreamDestroy(stream1_);
-    result_e = cudaStreamDestroy(stream2_);
-    result_e = cudaStreamDestroy(stream3_);
-    result_e = cudaStreamDestroy(stream4_);
-
     return DF_SUCCESS;
 }
 
@@ -1563,11 +1667,6 @@ int Scan3D::captureFrame02()
     /****************************cudaStreamCreate***********************/
 
     cudaError_t result_e;
-    cudaStream_t stream1_, stream2_, stream3_, stream4_;
-    result_e = cudaStreamCreate(&stream1_);
-    result_e = cudaStreamCreate(&stream2_);
-    result_e = cudaStreamCreate(&stream3_);
-    result_e = cudaStreamCreate(&stream4_);
     
     unsigned char* test_left = new unsigned char[image_width_ * image_height_];
     unsigned char* test_right = new unsigned char[image_width_ * image_height_];
@@ -1578,21 +1677,6 @@ int Scan3D::captureFrame02()
     projector_->project();
 
     LOG(INFO) << "grap start";
-    // for (int i = 0; i < 12; i += 1)
-    // {
-    //     if (!camera_left_->grap(host_img_left_[i]) || !camera_right_->grap(host_img_right_[i]))
-    //     {
-    //         camera_left_->streamOff();
-    //         camera_right_->streamOff();
-            
-    //         result_e = cudaStreamDestroy(stream1_);
-    //         result_e = cudaStreamDestroy(stream2_);
-    //         result_e = cudaStreamDestroy(stream3_);
-    //         result_e = cudaStreamDestroy(stream4_);
-            
-    //         return DF_ERROR_CAMERA_GRAP;
-    //     }
-    // }
 
     for (int j = 0; j < 14; j += 1)
     {
@@ -1613,11 +1697,6 @@ int Scan3D::captureFrame02()
         {
             camera_left_->streamOff();
             camera_right_->streamOff();
-            
-            result_e = cudaStreamDestroy(stream1_);
-            result_e = cudaStreamDestroy(stream2_);
-            result_e = cudaStreamDestroy(stream3_);
-            result_e = cudaStreamDestroy(stream4_);
             
             return DF_ERROR_CAMERA_GRAP;
         }
@@ -1726,11 +1805,6 @@ int Scan3D::captureFrame02()
     cuda_copy_depth_from_memory(buff_depth_);
     cuda_copy_brightness_from_memory(buff_brightness_);
 
-    result_e = cudaStreamDestroy(stream1_);
-    result_e = cudaStreamDestroy(stream2_);
-    result_e = cudaStreamDestroy(stream3_);
-    result_e = cudaStreamDestroy(stream4_);
-
     delete[] test_left;
     delete[] test_right;
 
@@ -1763,31 +1837,11 @@ int Scan3D::captureFrame03()
     /****************************cudaStreamCreate***********************/
 
     cudaError_t result_e;
-    cudaStream_t stream1_, stream2_, stream3_, stream4_;
-    result_e = cudaStreamCreate(&stream1_);
-    result_e = cudaStreamCreate(&stream2_);
-    result_e = cudaStreamCreate(&stream3_);
-    result_e = cudaStreamCreate(&stream4_);
     
     LOG(INFO) << "projector start";
     projector_->project();
 
     LOG(INFO) << "grap start";
-    // for (int i = 0; i < 12; i += 1)
-    // {
-    //     if (!camera_left_->grap(host_img_left_[i]) || !camera_right_->grap(host_img_right_[i]))
-    //     {
-    //         camera_left_->streamOff();
-    //         camera_right_->streamOff();
-            
-    //         result_e = cudaStreamDestroy(stream1_);
-    //         result_e = cudaStreamDestroy(stream2_);
-    //         result_e = cudaStreamDestroy(stream3_);
-    //         result_e = cudaStreamDestroy(stream4_);
-            
-    //         return DF_ERROR_CAMERA_GRAP;
-    //     }
-    // }
 
     for (int j = 0; j < 14; j += 1)
     {
@@ -1808,11 +1862,6 @@ int Scan3D::captureFrame03()
         {
             camera_left_->streamOff();
             camera_right_->streamOff();
-            
-            result_e = cudaStreamDestroy(stream1_);
-            result_e = cudaStreamDestroy(stream2_);
-            result_e = cudaStreamDestroy(stream3_);
-            result_e = cudaStreamDestroy(stream4_);
             
             return DF_ERROR_CAMERA_GRAP;
         }
@@ -1928,11 +1977,6 @@ int Scan3D::captureFrame03()
     cuda_copy_depth_from_memory(buff_depth_);
     cuda_copy_brightness_from_memory(buff_brightness_);
 
-    result_e = cudaStreamDestroy(stream1_);
-    result_e = cudaStreamDestroy(stream2_);
-    result_e = cudaStreamDestroy(stream3_);
-    result_e = cudaStreamDestroy(stream4_);
-
     return DF_SUCCESS;
 }
 
@@ -1982,11 +2026,6 @@ int Scan3D::captureFrame01HDR()
     /****************************cudaStreamCreate***********************/
 
     cudaError_t result_e;
-    cudaStream_t stream1_, stream2_, stream3_, stream4_;
-    result_e = cudaStreamCreate(&stream1_);
-    result_e = cudaStreamCreate(&stream2_);
-    result_e = cudaStreamCreate(&stream3_);
-    result_e = cudaStreamCreate(&stream4_);
 
     LOG(INFO) << "grap start";
 
@@ -2000,11 +2039,6 @@ int Scan3D::captureFrame01HDR()
             {
                 camera_left_->streamOff();
                 camera_right_->streamOff();
-
-                result_e = cudaStreamDestroy(stream1_);
-                result_e = cudaStreamDestroy(stream2_);
-                result_e = cudaStreamDestroy(stream3_);
-                result_e = cudaStreamDestroy(stream4_);
 
                 return DF_ERROR_CAMERA_GRAP;
             }
@@ -2043,11 +2077,6 @@ int Scan3D::captureFrame01HDR()
         {
             camera_left_->streamOff();
             camera_right_->streamOff();
-            
-            result_e = cudaStreamDestroy(stream1_);
-            result_e = cudaStreamDestroy(stream2_);
-            result_e = cudaStreamDestroy(stream3_);
-            result_e = cudaStreamDestroy(stream4_);
             
             return DF_ERROR_CAMERA_GRAP;
         }
@@ -2124,11 +2153,6 @@ int Scan3D::captureFrame01HDR()
     removeOutlierBaseRadiusFilter();
     cuda_copy_depth_from_memory(buff_depth_);
     cuda_copy_brightness_from_memory(buff_brightness_);
-
-    result_e = cudaStreamDestroy(stream1_);
-    result_e = cudaStreamDestroy(stream2_);
-    result_e = cudaStreamDestroy(stream3_);
-    result_e = cudaStreamDestroy(stream4_);
 
     LOG(INFO) << "start init basic memory";
 
@@ -2274,11 +2298,6 @@ int Scan3D::captureFrame08Repetition(int repetition_count)
     /****************************cudaStreamCreate***********************/
 
     cudaError_t result_e;
-    cudaStream_t stream1_, stream2_, stream3_, stream4_;
-    result_e = cudaStreamCreate(&stream1_);
-    result_e = cudaStreamCreate(&stream2_);
-    result_e = cudaStreamCreate(&stream3_);
-    result_e = cudaStreamCreate(&stream4_);
     
     for (int r = 0; r < repetition_count; r += 1)
     {
@@ -2314,11 +2333,6 @@ int Scan3D::captureFrame08Repetition(int repetition_count)
             {
                 camera_left_->streamOff();
                 camera_right_->streamOff();
-                
-                result_e = cudaStreamDestroy(stream1_);
-                result_e = cudaStreamDestroy(stream2_);
-                result_e = cudaStreamDestroy(stream3_);
-                result_e = cudaStreamDestroy(stream4_);
                 
                 return DF_ERROR_CAMERA_GRAP;
             }
@@ -2437,11 +2451,6 @@ int Scan3D::captureFrame08Repetition(int repetition_count)
     cuda_copy_depth_from_memory(buff_depth_);
     cuda_copy_brightness_from_memory(buff_brightness_);
 
-    result_e = cudaStreamDestroy(stream1_);
-    result_e = cudaStreamDestroy(stream2_);
-    result_e = cudaStreamDestroy(stream3_);
-    result_e = cudaStreamDestroy(stream4_);
-
     return DF_SUCCESS;
 }
 
@@ -2526,11 +2535,6 @@ int Scan3D::captureFrame04Repetition(int repetition_count)
     /****************************cudaStreamCreate***********************/
 
     cudaError_t result_e;
-    cudaStream_t stream1_, stream2_, stream3_, stream4_;
-    result_e = cudaStreamCreate(&stream1_);
-    result_e = cudaStreamCreate(&stream2_);
-    result_e = cudaStreamCreate(&stream3_);
-    result_e = cudaStreamCreate(&stream4_);
 
     for (int r = 0; r < repetition_count; r += 1)
     {
@@ -2567,12 +2571,7 @@ int Scan3D::captureFrame04Repetition(int repetition_count)
             {
                 camera_left_->streamOff();
                 camera_right_->streamOff();
-                
-                result_e = cudaStreamDestroy(stream1_);
-                result_e = cudaStreamDestroy(stream2_);
-                result_e = cudaStreamDestroy(stream3_);
-                result_e = cudaStreamDestroy(stream4_);
-                
+
                 return DF_ERROR_CAMERA_GRAP;
             }
 
@@ -2689,11 +2688,6 @@ int Scan3D::captureFrame04Repetition(int repetition_count)
     cuda_copy_depth_from_memory(buff_depth_);
     cuda_copy_brightness_from_memory(buff_brightness_);
 
-    result_e = cudaStreamDestroy(stream1_);
-    result_e = cudaStreamDestroy(stream2_);
-    result_e = cudaStreamDestroy(stream3_);
-    result_e = cudaStreamDestroy(stream4_);
-
     return DF_SUCCESS;
 }
 
@@ -2738,11 +2732,6 @@ int Scan3D::captureFrameTest(unsigned char* patterns_buf)
     /****************************cudaStreamCreate***********************/
 
     cudaError_t result_e;
-    cudaStream_t stream1_, stream2_, stream3_, stream4_;
-    result_e = cudaStreamCreate(&stream1_);
-    result_e = cudaStreamCreate(&stream2_);
-    result_e = cudaStreamCreate(&stream3_);
-    result_e = cudaStreamCreate(&stream4_);
 
     projector_->project();
 
@@ -2756,12 +2745,7 @@ int Scan3D::captureFrameTest(unsigned char* patterns_buf)
         {
             camera_left_->streamOff();
             camera_right_->streamOff();
-            
-            result_e = cudaStreamDestroy(stream1_);
-            result_e = cudaStreamDestroy(stream2_);
-            result_e = cudaStreamDestroy(stream3_);
-            result_e = cudaStreamDestroy(stream4_);
-            
+
             return DF_ERROR_CAMERA_GRAP;
         }
 
@@ -2853,12 +2837,6 @@ int Scan3D::captureFrameTest(unsigned char* patterns_buf)
         cuda_copy_brightness_from_memory(patterns_buf + image_height_ * image_width_ * i, i);
     }
 
-
-    result_e = cudaStreamDestroy(stream1_);
-    result_e = cudaStreamDestroy(stream2_);
-    result_e = cudaStreamDestroy(stream3_);
-    result_e = cudaStreamDestroy(stream4_);
-
     LOG(INFO) << "start init basic memory";
     cuda_init_basic_memory();
     LOG(INFO) << "finish init basic memory";
@@ -2924,6 +2902,11 @@ void Scan3D::copyBrightnessData(unsigned char* &ptr)
 void Scan3D::copyColorBrightnessData(unsigned char* &ptr)
 { 
 	memcpy(ptr, buff_color_brightness_, sizeof(unsigned char)*rgb_image_height_*rgb_image_width_*3); 
+}
+
+void Scan3D::copyResizeColorBrightnessData(unsigned char* &ptr)
+{ 
+	memcpy(ptr, buff_color_brightness_, sizeof(unsigned char)*rgb_image_height_*rgb_image_width_*3/4); 
 }
 
 void Scan3D::copyDepthData(float* &ptr)

@@ -208,6 +208,14 @@ extern "C"
 	DF_SDK_API int DfGetRepetitionFrame04(int count, float* depth, int depth_buf_size,
 		unsigned char* brightness, int brightness_buf_size, unsigned char* color_brightness, int color_brightness_buf_size, unsigned char* resize_color_brightness, int resize_color_brightness_buf_size, float* resize_color_depth, int resize_color_depth_buf_size);
 
+	//函数名： DfGetFrame05
+	//功能： 获取一帧彩色深度数据（黑白亮度图+彩色亮度图+深度图+深度图转彩色表），基于Raw01的相移图
+	//输入参数：depth_buf_size（深度图尺寸）、brightness_buf_size（亮度图尺寸）
+	//输出参数：depth（深度图）、brightness（亮度图）、color_brightness（彩色亮度图）、depth2color（深度图转彩色表）
+	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
+	DF_SDK_API int DfGetFrame05(float* depth, int depth_buf_size,
+		unsigned char* brightness, int brightness_buf_size, unsigned char* color_brightness, int color_brightness_buf_size, unsigned char* resize_color_brightness, int resize_color_brightness_buf_size, float* resize_color_depth, int resize_color_depth_buf_size);
+
 	//函数名： DfGetFrameTest
 	//功能： 获取一帧数据（亮度图+深度图），以及28张基于Raw01的相移图
 	//输入参数：depth_buf_size（深度图尺寸）、brightness_buf_size（亮度图尺寸）、patterns_buf_size（Raw01图片组尺寸）

@@ -91,7 +91,7 @@ bool AinstecProjector::setProjectorExposure(int exposure)
 {
     // 要用无符号整型表示，并且单位转换成0.1ms
 
-    if (exposure > 100000)
+    if (exposure > 110000)
     {
         std::cerr << "Exposure out of range! " << std::endl;
         return false;

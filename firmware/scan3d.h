@@ -51,6 +51,8 @@ public:
 
     int captureFrame04();
 
+    int captureFrame05();
+
     int captureFrame04MixedHDR();
 
     int captureFrame04Repetition(int repetition_count);
@@ -84,6 +86,8 @@ public:
     void copyDepth2ColorData(unsigned short* &ptr);
 
     void copyColorBrightnessData(unsigned char* &ptr);
+
+    void copyResizeColorBrightnessData(unsigned char* &ptr);
 
     void getCameraResolution(int &width, int &height);
 
