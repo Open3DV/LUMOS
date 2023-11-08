@@ -62,6 +62,7 @@ SettingsFileFunction::SettingsFileFunction()
 	gui_config_.Instance().repetition_count = 0;
 	gui_config_.Instance().last_path = "../TestData";
 	gui_config_.Instance().exposure_model = 0;
+	gui_config_.Instance().camera_type = 0;
 
 	firmware_config_param_.generate_brightness_exposure = 12000;
 	firmware_config_param_.generate_brightness_model = 1;
@@ -70,7 +71,6 @@ SettingsFileFunction::SettingsFileFunction()
 SettingsFileFunction::~SettingsFileFunction()
 {
 }
-
 
 bool SettingsFileFunction::loadProcessingSettingsFile(QString path)
 {
@@ -301,22 +301,29 @@ bool SettingsFileFunction::loadProcessingSettingsFile(QString path)
 			gui_config_.Instance().exposure_model = gui_Obj.value("exposure_model").toInt();
 		}
 	}
+	/*********************************************************************************************************************************/
+	if (rootObject.contains("sdk") && rootObject["sdk"].isObject())
+	{
+		QJsonObject sdk_Obj = rootObject["sdk"].toObject();
 
 
+		if (sdk_Obj.contains("repetition_count") && sdk_Obj["repetition_count"].isDouble())
+		{
+			gui_config_.Instance().repetition_count = sdk_Obj.value("repetition_count").toInt();
+		}
+
+		if (sdk_Obj.contains("exposure_model") && sdk_Obj["exposure_model"].isDouble())
+		{
+			gui_config_.Instance().exposure_model = sdk_Obj.value("exposure_model").toInt();
+		}
+
+		if (sdk_Obj.contains("camera_type") && sdk_Obj["camera_type"].isDouble())
+		{
+			gui_config_.Instance().camera_type = sdk_Obj.value("camera_type").toInt();
+		}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+	}
 
 	/*********************************************************************************************************************************/
 
@@ -411,6 +418,13 @@ bool SettingsFileFunction::saveProcessingSettingsFile(QString path)
 	rootObject.insert("gui", jsonObject_gui);
 
 
+
+	/************************************************************************************************************************************/
+	QJsonObject jsonObject_sdk;
+	jsonObject_sdk.insert("camera_type", gui_config_.Instance().camera_type);
+	jsonObject_sdk.insert("exposure_model", gui_config_.Instance().exposure_model);
+	jsonObject_sdk.insert("repetition_count", gui_config_.Instance().repetition_count);
+	rootObject.insert("sdk", jsonObject_sdk);
 
 	/************************************************************************************************************************************/
 

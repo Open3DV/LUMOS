@@ -50,8 +50,8 @@ CameraCaptureGui::CameraCaptureGui(QWidget* parent)
 	//修复默认值不触发hdr表更新
 	do_spin_exposure_num_changed(firmware_config_param_.mixed_exposure_num);
 
-	last_path_ = processing_gui_settings_data_.last_path;
-	sys_path_ = processing_gui_settings_data_.last_path;
+	last_path_ = processing_gui_settings_data_.Instance().last_path;
+	sys_path_ = processing_gui_settings_data_.Instance().last_path;
 	QDir dir(last_path_);
 	QString path = dir.absolutePath();
 
@@ -580,6 +580,8 @@ void CameraCaptureGui::undateSystemConfigUiData()
 	ui.doubleSpinBox_confidence->setValue(firmware_config_param_.confidence);
 	ui.doubleSpinBox_gain->setValue(system_config_param_.camera_gain);
 	ui.doubleSpinBox_gamma->setValue(system_config_param_.camera_gamma);
+	ui.checkBox_select_camera->setChecked(processing_gui_settings_data_.Instance().camera_type == 1);
+	ui.spinBox_repetition_count->setValue(processing_gui_settings_data_.Instance().repetition_count);
 
 	if (0 == firmware_config_param_.use_bilateral_filter)
 	{
@@ -870,6 +872,7 @@ void CameraCaptureGui::do_spin_smoothing_changed(int val)
 		}
 		else
 		{
+			firmware_config_param_.use_bilateral_filter = 1;
 			firmware_config_param_.bilateral_filter_param_d = 2 * val + 1;
 		}
 
@@ -1569,6 +1572,9 @@ void CameraCaptureGui::captureOneFrameBaseThread(bool hdr)
 	DfGetCameraResolution(&width, &height);
 	int channels;
 	DfGetCameraChannels(&channels);
+	LumosCameraSelect SelectCamMode;
+	SelectCamMode = processing_gui_settings_data_.Instance().camera_type == 1 ? LumosCameraSelect::RGBCamera : LumosCameraSelect::GrayCamera;
+	DfSelectCamera(SelectCamMode);
 
 	int image_size = width * height * channels;
 
@@ -2130,7 +2136,8 @@ void  CameraCaptureGui::do_pushButton_connect()
 
 
 			addLogMessage(u8"连接相机：");
-			DfSelectCamera(LumosCameraSelect::GrayCamera);
+			LumosCameraSelect select = processing_gui_settings_data_.Instance().camera_type == 1 ? LumosCameraSelect::RGBCamera : LumosCameraSelect::GrayCamera;
+			DfSelectCamera(select);
 			int ret_code = DfConnect(camera_ip_.toStdString().c_str());
  
   
@@ -3154,6 +3161,7 @@ void CameraCaptureGui::do_checkBox_toggled_over_exposure(bool state)
 void CameraCaptureGui::do_checkBox_toggled_select_camera(bool state)
 {
 	LumosCameraSelect select = state ? LumosCameraSelect::RGBCamera : LumosCameraSelect::GrayCamera;
+	processing_gui_settings_data_.Instance().camera_type = state ? 1 : 0;
 	DfSelectCamera(select);
 }
 

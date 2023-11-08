@@ -19,6 +19,7 @@ struct  GuiConfigDataStruct
 	QString last_path;
 	int exposure_model;
 
+	int camera_type;
 
 	bool loadFromSettings(const QString& f);
 	bool saveToSettings(const QString& f);
