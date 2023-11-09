@@ -486,7 +486,7 @@
                     <number>2</number>
                    </property>
                    <property name="maximum">
-                    <number>6</number>
+                    <number>5</number>
                    </property>
                    <property name="displayIntegerBase">
                     <number>10</number>
@@ -843,7 +843,7 @@
                   <number>3</number>
                  </property>
                  <attribute name="horizontalHeaderVisible">
-                  <bool>true</bool>
+                  <bool>false</bool>
                  </attribute>
                  <attribute name="horizontalHeaderCascadingSectionResizes">
                   <bool>false</bool>
@@ -1124,7 +1124,7 @@
  </resources>
  <connections/>
  <buttongroups>
-  <buttongroup name="buttonGroup_image"/>
   <buttongroup name="buttonGroup_exposure"/>
+  <buttongroup name="buttonGroup_image"/>
  </buttongroups>
 </ui>

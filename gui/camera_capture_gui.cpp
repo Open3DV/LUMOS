@@ -3184,6 +3184,8 @@ void CameraCaptureGui::do_checkBox_toggled_over_exposure(bool state)
 
 void CameraCaptureGui::do_checkBox_toggled_select_camera(bool state)
 {
+	ui.checkBox_select_camera->setDisabled(true);
+
 	LumosCameraSelect select = state ? LumosCameraSelect::RGBCamera : LumosCameraSelect::GrayCamera;
 	processing_gui_settings_data_.Instance().camera_type = state ? 1 : 0;
 
@@ -3197,8 +3199,11 @@ void CameraCaptureGui::do_checkBox_toggled_select_camera(bool state)
 	{
 		DfSelectCamera(select);
 	}
+
 	QString str = state ? u8"设置为彩色相机坐标系。" : u8"设置为灰度相机坐标系。";
 	addLogMessage(str);
+
+	ui.checkBox_select_camera->setEnabled(true);
 }
 
 void CameraCaptureGui::do_checkBox_toggled_depth_filter(bool state)

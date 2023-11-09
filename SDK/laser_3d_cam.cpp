@@ -275,7 +275,6 @@ int undistortRGBBrightnessMap(unsigned char* brightness_map) //最近邻
 	int nr = rgb_camera_height_;
 	int nc = rgb_camera_width_;
 
-	unsigned char* brightness_map_temp = new unsigned char[nr * nc * 3];
 	memset(brightness_map_temp, 0, sizeof(unsigned char) * nr * nc * 3);
 
 #pragma omp parallel for
@@ -302,8 +301,6 @@ int undistortRGBBrightnessMap(unsigned char* brightness_map) //最近邻
 	}
 
 	memcpy(brightness_map, brightness_map_temp, sizeof(unsigned char) * nr * nc * 3);
-	delete[] brightness_map_temp;
-	brightness_map_temp = NULL;
 	return DF_SUCCESS;
 }
 
@@ -330,7 +327,7 @@ int undistortResizeRGBBrightnessMap(unsigned char* brightness_map) //最近邻
 			// 进行双线性差值
 			if (distort_x > 0 && distort_x < nc / 2 - 1 && distort_y > 0 && distort_y < nr / 2 - 1)
 			{
-				int distort_offset = distort_y * nc + distort_x;
+				int distort_offset = distort_y * nc / 2 + distort_x;
 				brightness_map_temp[resized_offset * 3] = brightness_map[distort_offset * 3];
 				brightness_map_temp[resized_offset * 3 + 1] = brightness_map[distort_offset * 3 + 1];
 				brightness_map_temp[resized_offset * 3 + 2] = brightness_map[distort_offset * 3 + 2];
@@ -633,7 +630,7 @@ DF_SDK_API int DfConnect(const char* camera_id)
 
 	distorted_map_x_ = (float*)(new char[(long long)rgb_camera_width_ * rgb_camera_height_ * 4]);
 	distorted_map_y_ = (float*)(new char[(long long)rgb_camera_width_ * rgb_camera_height_ * 4]);
-	brightness_map_temp = new unsigned char[rgb_camera_width_ * rgb_camera_height_ * 3 / 4];
+	brightness_map_temp = new unsigned char[rgb_camera_width_ * rgb_camera_height_ * 3];
 
 	float camera_fx = calibration_param_.camera_intrinsic[0];
 	float camera_fy = calibration_param_.camera_intrinsic[4];
@@ -1735,7 +1732,7 @@ DF_SDK_API int DfGetFrame05(float* depth, int depth_buf_size,
 		return DF_BUSY;
 	}
 
-	undistortResizeRGBBrightnessMap(color_brightness);
+	undistortResizeRGBBrightnessMap(resize_color_brightness);
 
 	float rgb_camera_intrinsic[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	rgb_camera_intrinsic[0] = calibration_param_.rgb_camera_intrinsic[0] / 2.;
@@ -1821,20 +1818,20 @@ DF_SDK_API int DfGetFrame04HDR(float* depth, int depth_buf_size,
 		return DF_BUSY;
 	}
 
-	//undistortRGBBrightnessMap(color_brightness);
+	undistortRGBBrightnessMap(color_brightness);
 
-	//resizeRGBImageToHalf(color_brightness, rgb_camera_width_, rgb_camera_height_, resize_color_brightness);
+	resizeRGBImageToHalf(color_brightness, rgb_camera_width_, rgb_camera_height_, resize_color_brightness);
 
-	//LOG(INFO) << "resizeRGBImageToHalf DONE";
+	LOG(INFO) << "resizeRGBImageToHalf DONE";
 
-	//float rgb_camera_intrinsic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0 };
-	//rgb_camera_intrinsic[0] = calibration_param_.rgb_camera_intrinsic[0] / 2.;
-	//rgb_camera_intrinsic[2] = calibration_param_.rgb_camera_intrinsic[2] / 2.;
-	//rgb_camera_intrinsic[4] = calibration_param_.rgb_camera_intrinsic[4] / 2.;
-	//rgb_camera_intrinsic[5] = calibration_param_.rgb_camera_intrinsic[5] / 2.;
-	//rgb_camera_intrinsic[8] = 1.;
+	float rgb_camera_intrinsic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	rgb_camera_intrinsic[0] = calibration_param_.rgb_camera_intrinsic[0] / 2.;
+	rgb_camera_intrinsic[2] = calibration_param_.rgb_camera_intrinsic[2] / 2.;
+	rgb_camera_intrinsic[4] = calibration_param_.rgb_camera_intrinsic[4] / 2.;
+	rgb_camera_intrinsic[5] = calibration_param_.rgb_camera_intrinsic[5] / 2.;
+	rgb_camera_intrinsic[8] = 1.;
 
-	//convertDepthToRGBDepth(depth, resize_color_depth, calibration_param_.rotation_matrix, calibration_param_.translation_matrix, calibration_param_.camera_intrinsic, rgb_camera_intrinsic, camera_width_, camera_height_, rgb_camera_width_ / 2, rgb_camera_height_ / 2);
+	convertDepthToRGBDepth(depth, resize_color_depth, calibration_param_.rotation_matrix, calibration_param_.translation_matrix, calibration_param_.camera_intrinsic, rgb_camera_intrinsic, camera_width_, camera_height_, rgb_camera_width_ / 2, rgb_camera_height_ / 2);
 
 	LOG(INFO) << "Get frame04 success";
 	close_socket(g_sock);
@@ -2958,7 +2955,7 @@ DF_SDK_API int DfGetDeviceTemperature(float& temperature)
 		}
 
 
-		LOG(ERROR) << "CPU temperature: " << temperature;
+		LOG(INFO) << "CPU temperature: " << temperature;
 	}
 	else if (command == DF_CMD_REJECT)
 	{
@@ -4036,6 +4033,18 @@ DF_SDK_API int  DfGetCameraChannels(int* channels)
 	return DF_SUCCESS;
 }
 
+int initCaptureData()
+{
+	LOG(INFO) << "Capture error, init memory. ";
+
+	memset(depth_buf_, 0, depth_buf_size_);
+	memset(brightness_buf_, 0, brightness_buf_size_);
+	memset(resize_color_brightness_buf_, 0, resize_color_brightness_buf_size_);
+	memset(resize_color_depth_buf_, 0, resize_color_depth_buf_size_);
+
+	return DF_SUCCESS;
+}
+
 //函数名： DfCaptureData
 //功能： 采集一帧数据并阻塞至返回状态
 //输入参数： exposure_num（曝光次数）：大于1的为多曝光模式
@@ -4058,6 +4067,8 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 				ret = DfGetFrame01HDR(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_);
 				if (DF_SUCCESS != ret)
 				{
+					LOG(ERROR) << "DfGetFrame01HDR Failed";
+					initCaptureData();
 					return ret;
 				}
 			}
@@ -4066,6 +4077,8 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 				ret = DfGetFrame04HDR(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
 				if (DF_SUCCESS != ret)
 				{
+					LOG(ERROR) << "DfGetFrame04HDR Failed";
+					initCaptureData();
 					return ret;
 				}
 			}
@@ -4079,6 +4092,8 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 				ret = DfGetRepetitionFrame01(repetition_exposure_model_, depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_);
 				if (DF_SUCCESS != ret)
 				{
+					LOG(ERROR) << "DfGetRepetitionFrame01 Failed";
+					initCaptureData();
 					return ret;
 				}
 			}
@@ -4087,6 +4102,8 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 				ret = DfGetRepetitionFrame04(repetition_exposure_model_, depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
 				if (DF_SUCCESS != ret)
 				{
+					LOG(ERROR) << "DfGetRepetitionFrame01 Failed";
+					initCaptureData();
 					return ret;
 				}
 			}
@@ -4105,6 +4122,8 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 			ret = DfGetFrame01(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_);
 			if (DF_SUCCESS != ret)
 			{
+				LOG(ERROR) << "DfGetFrame01 Failed";
+				initCaptureData();
 				return ret;
 			}
 		}
@@ -4113,6 +4132,8 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 			ret = DfGetFrame05(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
 			if (DF_SUCCESS != ret)
 			{
+				LOG(ERROR) << "DfGetFrame05 Failed";
+				initCaptureData();
 				return ret;
 			}
 		}
@@ -4186,7 +4207,7 @@ DF_SDK_API int DfGetFrameStatus(int& status)
 			return DF_ERROR_NETWORK;
 		}
 
-		LOG(INFO) << "Frame Status: " << status;
+		LOG(INFO) << "Frame Status: " << get_status;
 	}
 	else if (command == DF_CMD_REJECT)
 	{
