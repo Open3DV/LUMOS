@@ -23,6 +23,7 @@ std::random_device rd;
 std::mt19937 rand_num(rd());
 bool connected = false;
 long long current_token = 0;
+int frame_status_ = DF_SUCCESS;
 
 // heart beat
 unsigned int heartbeat_timer = 0;
@@ -81,7 +82,40 @@ long long generate_token()
     return token;
 }
 
+void handle_error(int code)
+{
+    if (DF_SUCCESS != code)
+    {
+        LOG(ERROR) << "handle error: " << code;
 
+        frame_status_ = code;
+
+        // switch (code)
+        // {
+        // case DF_ERROR_LOST_TRIGGER:
+        // {
+        //     reboot_lightcraft();
+        // }
+        // break;
+
+        // case DF_ERROR_LIGHTCRAFTER_SET_PATTERN_ORDER:
+        // {
+        //     reboot_lightcraft();
+        // }
+        // break;
+        // case DF_ERROR_CAMERA_STREAM:
+        // {
+        //     if (DF_ERROR_2D_CAMERA == scan3d_.reopenCamera())
+        //     {
+        //         reboot_system();
+        //     }
+        // }
+        // break;
+        // default:
+        //     break;
+        // }
+    }
+}
 
 
 int handle_cmd_connect(int client_sock)
@@ -364,6 +398,7 @@ int handle_cmd_get_frame_01_parallel(int client_sock)
         return DF_FAILED;
     }
 
+    frame_status_ = DF_FRAME_CAPTURING;
     int ret = DF_SUCCESS;
 
     int depth_buf_size = camera_width_ * camera_height_ * 4;
@@ -378,6 +413,7 @@ int handle_cmd_get_frame_01_parallel(int client_sock)
     if (DF_SUCCESS != ret)
     {
         LOG(ERROR) << "captureFrame01 code: " << ret;
+        handle_error(ret);
     }
 
     LOG(INFO) << "Reconstruct captureFrame01 Finished!";
@@ -406,6 +442,7 @@ int handle_cmd_get_frame_01_parallel(int client_sock)
         delete[] depth_map;
         delete[] brightness;
 
+        frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
 
@@ -422,8 +459,13 @@ int handle_cmd_get_frame_01_parallel(int client_sock)
         delete[] depth_map;
         delete[] brightness;
 
-
+        frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
+    }
+
+    if (frame_status_ == DF_FRAME_CAPTURING)
+    {
+        frame_status_ = DF_SUCCESS;
     }
     LOG(INFO) << "frame sent!";
     // delete [] buffer;
@@ -441,6 +483,7 @@ int handle_cmd_get_frame_04_parallel(int client_sock)
         return DF_FAILED;
     }
 
+    frame_status_ = DF_FRAME_CAPTURING;
     int ret = DF_SUCCESS;
 
     int depth_buf_size = camera_width_ * camera_height_ * 4;
@@ -457,6 +500,7 @@ int handle_cmd_get_frame_04_parallel(int client_sock)
     if (DF_SUCCESS != ret)
     {
         LOG(ERROR) << "captureFrame04 code: " << ret;
+        handle_error(ret);
     }
 
     LOG(INFO) << "Reconstruct captureFrame04 Finished!";
@@ -487,6 +531,7 @@ int handle_cmd_get_frame_04_parallel(int client_sock)
         delete[] brightness;
         delete[] color_brightness;
 
+        frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
 
@@ -502,6 +547,7 @@ int handle_cmd_get_frame_04_parallel(int client_sock)
         delete[] brightness;
         delete[] color_brightness;
 
+        frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
 
@@ -517,6 +563,7 @@ int handle_cmd_get_frame_04_parallel(int client_sock)
         delete[] brightness;
         delete[] color_brightness;
 
+        frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
     
@@ -526,6 +573,11 @@ int handle_cmd_get_frame_04_parallel(int client_sock)
     delete[] brightness;
 
     delete[] color_brightness;
+
+    if (frame_status_ == DF_FRAME_CAPTURING)
+    {
+        frame_status_ = DF_SUCCESS;
+    }
 
     return DF_SUCCESS;
 }
@@ -537,6 +589,7 @@ int handle_cmd_get_frame_05_parallel(int client_sock)
         return DF_FAILED;
     }
 
+	frame_status_ = DF_FRAME_CAPTURING;
     int ret = DF_SUCCESS;
 
     int depth_buf_size = camera_width_ * camera_height_ * 4;
@@ -553,6 +606,7 @@ int handle_cmd_get_frame_05_parallel(int client_sock)
     if (DF_SUCCESS != ret)
     {
         LOG(ERROR) << "captureFrame05 code: " << ret;
+		handle_error(ret);
     }
 
     LOG(INFO) << "Reconstruct captureFrame05 Finished!";
@@ -582,6 +636,7 @@ int handle_cmd_get_frame_05_parallel(int client_sock)
         delete[] depth_map;
         delete[] brightness;
         delete[] color_brightness;
+		frame_status_ = DF_ERROR_NETWORK;
 
         return DF_FAILED;
     }
@@ -597,6 +652,7 @@ int handle_cmd_get_frame_05_parallel(int client_sock)
         delete[] depth_map;
         delete[] brightness;
         delete[] color_brightness;
+		frame_status_ = DF_ERROR_NETWORK;
 
         return DF_FAILED;
     }
@@ -612,6 +668,7 @@ int handle_cmd_get_frame_05_parallel(int client_sock)
         delete[] depth_map;
         delete[] brightness;
         delete[] color_brightness;
+		frame_status_ = DF_ERROR_NETWORK;
 
         return DF_FAILED;
     }
@@ -622,6 +679,12 @@ int handle_cmd_get_frame_05_parallel(int client_sock)
     delete[] brightness;
 
     delete[] color_brightness;
+	
+	if (frame_status_ == DF_FRAME_CAPTURING)
+    {
+        frame_status_ = DF_SUCCESS;
+    }
+
 
     return DF_SUCCESS;
 }
@@ -751,6 +814,7 @@ int handle_cmd_get_frame_01_hdr_parallel(int client_sock)
         return DF_FAILED;
     }
 
+    frame_status_ = DF_FRAME_CAPTURING;
     int ret = DF_SUCCESS;
 
     int depth_buf_size = camera_width_ * camera_height_ * 4;
@@ -765,6 +829,7 @@ int handle_cmd_get_frame_01_hdr_parallel(int client_sock)
     if (DF_SUCCESS != ret)
     {
         LOG(ERROR) << "captureFrame08HDR code: " << ret;
+        handle_error(ret);
     }
 
     LOG(INFO) << "Reconstruct captureFrame08HDR Finished!";
@@ -794,6 +859,7 @@ int handle_cmd_get_frame_01_hdr_parallel(int client_sock)
         delete[] depth_map;
         delete[] brightness;
 
+        frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
 
@@ -810,7 +876,7 @@ int handle_cmd_get_frame_01_hdr_parallel(int client_sock)
         delete[] depth_map;
         delete[] brightness;
 
-
+        frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
     LOG(INFO) << "frame sent!";
@@ -818,9 +884,13 @@ int handle_cmd_get_frame_01_hdr_parallel(int client_sock)
     delete[] depth_map;
     delete[] brightness;
 
-
+    if (frame_status_ == DF_FRAME_CAPTURING)
+    {
+        frame_status_ = DF_SUCCESS;
+    }
     return DF_SUCCESS;
 }
+
 
 int handle_cmd_get_repetition_frame_01(int client_sock)
 {
@@ -829,6 +899,7 @@ int handle_cmd_get_repetition_frame_01(int client_sock)
         return DF_FAILED;
     }
 
+	frame_status_ = DF_FRAME_CAPTURING;
     int repetition_count;
 
     int ret = recv_buffer(client_sock, (char*)(&repetition_count), sizeof(int));
@@ -841,6 +912,7 @@ int handle_cmd_get_repetition_frame_01(int client_sock)
     if (repetition_count < 0 || repetition_count > 10)
     {
         LOG(INFO) << "repetition count out of range, close this connection!\n";
+		frame_status_ = DF_ERROR_INVALID_PARAM;
         return DF_FAILED;
     }
 
@@ -856,6 +928,7 @@ int handle_cmd_get_repetition_frame_01(int client_sock)
     if (DF_SUCCESS != ret)
     {
         LOG(ERROR) << "captureFrame08Repetition code: " << ret;
+		handle_error(ret);
     }
 
     LOG(INFO) << "Reconstruct captureFrame08Repetition Finished!";
@@ -885,6 +958,7 @@ int handle_cmd_get_repetition_frame_01(int client_sock)
         delete[] depth_map;
         delete[] brightness;
 
+		frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
 
@@ -901,7 +975,7 @@ int handle_cmd_get_repetition_frame_01(int client_sock)
         delete[] depth_map;
         delete[] brightness;
 
-
+		frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
     LOG(INFO) << "frame sent!";
@@ -909,7 +983,11 @@ int handle_cmd_get_repetition_frame_01(int client_sock)
     delete[] depth_map;
     delete[] brightness;
 
-
+    if (frame_status_ == DF_FRAME_CAPTURING)
+    {
+        frame_status_ = DF_SUCCESS;
+    }
+	
     return DF_SUCCESS;
 }
 
@@ -920,6 +998,7 @@ int handle_cmd_get_frame_04_hdr_parallel(int client_sock)
         return DF_FAILED;
     }
 
+    frame_status_ = DF_FRAME_CAPTURING;
     int ret = DF_SUCCESS;
 
     int depth_buf_size = camera_width_ * camera_height_ * 4;
@@ -937,6 +1016,7 @@ int handle_cmd_get_frame_04_hdr_parallel(int client_sock)
     if (DF_SUCCESS != ret)
     {
         LOG(ERROR) << "captureFrame04HDR code: " << ret;
+        handle_error(ret);
     }
 
     LOG(INFO) << "Reconstruct captureFrame04HDR Finished!";
@@ -968,6 +1048,7 @@ int handle_cmd_get_frame_04_hdr_parallel(int client_sock)
         delete[] brightness;
         delete[] color_brightness;
 
+        frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
 
@@ -983,6 +1064,7 @@ int handle_cmd_get_frame_04_hdr_parallel(int client_sock)
         delete[] brightness;
         delete[] color_brightness;
 
+        frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
 
@@ -1000,6 +1082,7 @@ int handle_cmd_get_frame_04_hdr_parallel(int client_sock)
         delete[] brightness;
         delete[] color_brightness;
 
+        frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
 
@@ -1009,8 +1092,13 @@ int handle_cmd_get_frame_04_hdr_parallel(int client_sock)
     delete[] brightness;
     delete[] color_brightness;
 
+    if (frame_status_ == DF_FRAME_CAPTURING)
+    {
+        frame_status_ = DF_SUCCESS;
+    }
     return DF_SUCCESS;
 }
+
 
 int handle_cmd_get_repetition_frame_04(int client_sock)
 {
@@ -1018,7 +1106,8 @@ int handle_cmd_get_repetition_frame_04(int client_sock)
     {
         return DF_FAILED;
     }
-
+	
+	frame_status_ = DF_FRAME_CAPTURING;
     int repetition_count;
 
     int ret = recv_buffer(client_sock, (char*)(&repetition_count), sizeof(int));
@@ -1031,6 +1120,7 @@ int handle_cmd_get_repetition_frame_04(int client_sock)
     if (repetition_count < 0 || repetition_count > 10)
     {
         LOG(INFO) << "repetition count out of range, close this connection!\n";
+		frame_status_ = DF_ERROR_INVALID_PARAM;
         return DF_FAILED;
     }
 
@@ -1047,6 +1137,7 @@ int handle_cmd_get_repetition_frame_04(int client_sock)
     ret = scan3d_.captureFrame04Repetition(repetition_count);
     if (DF_SUCCESS != ret)
     {
+		handle_error(ret);
         LOG(ERROR) << "captureFrame04Repetition code: " << ret;
     }
 
@@ -1078,6 +1169,7 @@ int handle_cmd_get_repetition_frame_04(int client_sock)
         delete[] brightness;
         delete[] color_brightness;
 
+		frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
 
@@ -1093,6 +1185,7 @@ int handle_cmd_get_repetition_frame_04(int client_sock)
         delete[] brightness;
         delete[] color_brightness;
 
+		frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
 
@@ -1107,7 +1200,8 @@ int handle_cmd_get_repetition_frame_04(int client_sock)
         delete[] depth_map;
         delete[] brightness;
         delete[] color_brightness;
-
+		
+		frame_status_ = DF_ERROR_NETWORK;
         return DF_FAILED;
     }
     
@@ -1118,6 +1212,10 @@ int handle_cmd_get_repetition_frame_04(int client_sock)
 
     delete[] color_brightness;
 
+    if (frame_status_ == DF_FRAME_CAPTURING)
+    {
+        frame_status_ = DF_SUCCESS;
+    }
     return DF_SUCCESS;
 }
 
@@ -2400,6 +2498,25 @@ int handle_cmd_get_product_info(int client_sock)
     return DF_SUCCESS;
 }
 
+int handle_cmd_get_frame_status(int client_sock)
+{
+    if (check_token(client_sock) == DF_FAILED)
+    {
+        return DF_FAILED;
+    }
+
+    LOG(INFO) << "Frame Status: "<<frame_status_;
+
+    int ret = send_buffer(client_sock, (char*)(&frame_status_), sizeof(frame_status_));
+    if(ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!\n";
+        return DF_FAILED;
+    }
+
+    return DF_SUCCESS;
+}
+
 int read_bandwidth()
 {
     int val = 0;
@@ -2638,6 +2755,10 @@ int handle_commands(int client_sock)
     case DF_CMD_GET_PRODUCT_INFO:
         LOG(INFO)<<"DF_CMD_GET_PRODUCT_INFO"; 
         ret = handle_cmd_get_product_info(client_sock);
+        break;
+    case DF_CMD_GET_FRAME_STATUS:
+        LOG(INFO)<<"DF_CMD_GET_FRAME_STATUS"; 
+        ret = handle_cmd_get_frame_status(client_sock);
         break;
 	case DF_CMD_GET_NETWORK_BANDWIDTH:
 	    LOG(INFO)<<"DF_CMD_GET_NETWORK_BANDWIDTH";
