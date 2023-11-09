@@ -2877,12 +2877,19 @@ DF_SDK_API int DfGetParamGenerateBrightness(int& model, float& exposure)
 
 bool transformPointcloud(float* org_point_cloud_map, float* transform_point_cloud_map, float* rotate, float* translation)
 {
-
-
-	int point_num = camera_height_ * camera_width_;
-
 	int nr = camera_height_;
 	int nc = camera_width_;
+
+	if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
+	{
+		nr = camera_height_;
+		nc = camera_width_;
+	}
+	else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
+	{
+		nr = resize_rgb_camera_height_;
+		nc = resize_rgb_camera_width_;
+	}
 
 #pragma omp parallel for
 	for (int r = 0; r < nr; r++)
@@ -2891,7 +2898,7 @@ bool transformPointcloud(float* org_point_cloud_map, float* transform_point_clou
 		for (int c = 0; c < nc; c++)
 		{
 
-			int offset = r * camera_width_ + c;
+			int offset = r * nc + c;
 
 			float x = org_point_cloud_map[3 * offset + 0];
 			float y = org_point_cloud_map[3 * offset + 1];
