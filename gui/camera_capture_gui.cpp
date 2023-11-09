@@ -2379,6 +2379,15 @@ void CameraCaptureGui::do_pushButton_calibrate_external_param()
 		return;
 	}
 
+	cv::Mat grayImage;
+	if (brightness_map_.type() != CV_8UC1)
+	{
+		cv::cvtColor(brightness_map_, grayImage, cv::COLOR_BGR2GRAY);
+	}
+	else
+	{
+		grayImage = brightness_map_.clone();
+	}
 
 	cv::Mat cameraMatrix(3, 3, CV_32FC1, camera_calibration_param_.camera_intrinsic);
 	cv::Mat distCoeffs = cv::Mat(5, 1, CV_32F, camera_calibration_param_.camera_distortion);
@@ -2394,7 +2403,7 @@ void CameraCaptureGui::do_pushButton_calibrate_external_param()
 		Calibrate_Function calib_function;
 		calib_function.setBoardMessage(board_message_);
 		std::vector<cv::Point2f> circle_points;
-		bool found = calib_function.findCircleBoardFeature(brightness_map_, circle_points);
+		bool found = calib_function.findCircleBoardFeature(grayImage, circle_points);
 
 		if (!found)
 		{ 
@@ -2405,7 +2414,7 @@ void CameraCaptureGui::do_pushButton_calibrate_external_param()
 
 		cv::medianBlur(depth_map_, depth_map_, 3);
 
-		cv::Mat points_map(brightness_map_.size(), CV_32FC3, cv::Scalar(0., 0., 0.));
+		cv::Mat points_map(grayImage.size(), CV_32FC3, cv::Scalar(0., 0., 0.));
 		depthTransformPointcloud((float*)depth_map_.data, (float*)points_map.data);
 
 		/*******************************************************************************************/
@@ -2505,19 +2514,27 @@ void CameraCaptureGui::do_pushButton_test_accuracy()
 {
 	Calibrate_Function calib_function;
 	calib_function.setBoardMessage(board_message_);
-
-	if (brightness_map_.empty() || brightness_map_.type() != CV_8UC1)
+	cv::Mat img;
+	if (brightness_map_.empty())
 	{
 		return;
+	}
+	if (brightness_map_.type() != CV_8UC1)
+	{
+		cv::cvtColor(brightness_map_, img, cv::COLOR_BGR2GRAY);
+	}
+	else
+	{
+		img = brightness_map_.clone();
 	}
 
 	cv::Mat cameraMatrix(3, 3, CV_32FC1, camera_calibration_param_.camera_intrinsic);
 	cv::Mat distCoeffs = cv::Mat(5, 1, CV_32F, camera_calibration_param_.camera_distortion);
 
 
-	cv::Mat img = brightness_map_.clone();
+	
 	cv::Mat undist_img;
-	cv::undistort(brightness_map_, undist_img, cameraMatrix, distCoeffs);
+	cv::undistort(img, undist_img, cameraMatrix, distCoeffs);
 
 
 
@@ -2560,7 +2577,15 @@ void CameraCaptureGui::do_pushButton_test_accuracy()
 
 			cv::Mat color_img;
 			cv::Size board_size = calib_function.getBoardSize();
-			cv::cvtColor(brightness_map_, color_img, cv::COLOR_GRAY2BGR);
+			if (brightness_map_.type() != CV_8UC1)
+			{
+				color_img = brightness_map_.clone();
+			}
+			else
+			{
+				cv::cvtColor(brightness_map_, color_img, cv::COLOR_GRAY2BGR);
+			}
+			
 			cv::drawChessboardCorners(color_img, board_size, circle_points, found);
 			//cv::circle(color_img, circle_points[0], 15, cv::Scalar(0, 255, 0), 2);
 			//cv::circle(color_img, circle_points[6], 20, cv::Scalar(0, 255, 0), 2);
@@ -2664,7 +2689,7 @@ void CameraCaptureGui::do_pushButton_test_accuracy()
 		calib_function.setBoardMessage(board_message_);
 
 		std::vector<cv::Point2f> circle_points;
-		bool found = calib_function.findCircleBoardFeature(brightness_map_, circle_points);
+		bool found = calib_function.findCircleBoardFeature(img, circle_points);
 
 		if (!found)
 		{ 
@@ -2677,7 +2702,14 @@ void CameraCaptureGui::do_pushButton_test_accuracy()
 		{
 			cv::Mat color_img;
 			cv::Size board_size = calib_function.getBoardSize();
-			cv::cvtColor(brightness_map_, color_img, cv::COLOR_GRAY2BGR);
+			if (brightness_map_.type() != CV_8UC1)
+			{
+				color_img = brightness_map_.clone();
+			}
+			else
+			{
+				cv::cvtColor(brightness_map_, color_img, cv::COLOR_GRAY2BGR);
+			}
 			cv::drawChessboardCorners(color_img, board_size, circle_points, found);
 			render_image_brightness_ = color_img.clone();
 			showImage();
