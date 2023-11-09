@@ -4071,6 +4071,7 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 			}
 
 		}
+		break;
 		case 2:
 		{
 			if (lumos_camera_select_ == LumosCameraSelect::GrayCamera)
