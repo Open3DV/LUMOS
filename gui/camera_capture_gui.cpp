@@ -757,14 +757,6 @@ void CameraCaptureGui::do_spin_camera_exposure_changed(int val)
 			ret_code = DfSetParamCameraExposure(system_config_param_.camera_exposure_time);
 			if (0 == ret_code)
 			{
-				//ui.spinBox_camera_exposure->setValue(system_config_param_.camera_exposure_time);
-				for (int i = 0; i < 6; i += 1)
-				{
-					firmware_config_param_.mixed_exposure_param_list[i] = system_config_param_.camera_exposure_time;
-				}
-
-				do_spin_exposure_num_changed(firmware_config_param_.mixed_exposure_num);
-
 				QString str = u8"设置相机曝光时间: " + QString::number(system_config_param_.camera_exposure_time);
 				addLogMessage(str);
 			}
@@ -3194,7 +3186,19 @@ void CameraCaptureGui::do_checkBox_toggled_select_camera(bool state)
 {
 	LumosCameraSelect select = state ? LumosCameraSelect::RGBCamera : LumosCameraSelect::GrayCamera;
 	processing_gui_settings_data_.Instance().camera_type = state ? 1 : 0;
-	DfSelectCamera(select);
+
+	if (start_timer_flag_)
+	{
+		stopCapturingOneFrameBaseThread();
+		DfSelectCamera(select);
+		do_pushButton_capture_continuous();
+	}
+	else
+	{
+		DfSelectCamera(select);
+	}
+	QString str = state ? u8"设置为彩色相机坐标系。" : u8"设置为灰度相机坐标系。";
+	addLogMessage(str);
 }
 
 void CameraCaptureGui::do_checkBox_toggled_depth_filter(bool state)
