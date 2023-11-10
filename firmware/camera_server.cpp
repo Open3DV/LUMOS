@@ -412,13 +412,15 @@ int handle_cmd_get_frame_01_parallel(int client_sock)
     ret = scan3d_.captureFrame08();
     if (DF_SUCCESS != ret)
     {
+        LOG(ERROR) << "captureFrame01 code0: " << ret;
         ret = scan3d_.captureFrame08();
         if (DF_SUCCESS != ret)
         {
+            LOG(ERROR) << "captureFrame01 code1: " << ret;
             ret = scan3d_.captureFrame08();
             if (DF_SUCCESS != ret)
             {
-                LOG(ERROR) << "captureFrame01 code: " << ret;
+                LOG(ERROR) << "captureFrame01 code2: " << ret;
                 handle_error(ret);
             }
         }
@@ -508,13 +510,15 @@ int handle_cmd_get_frame_04_parallel(int client_sock)
     ret = scan3d_.captureFrame04();
     if (DF_SUCCESS != ret)
     {
+        LOG(ERROR) << "captureFrame04 code0: " << ret;
         ret = scan3d_.captureFrame04();
         if (DF_SUCCESS != ret)
         {
+            LOG(ERROR) << "captureFrame04 code1: " << ret;
             ret = scan3d_.captureFrame04();
             if (DF_SUCCESS != ret)
             {
-                LOG(ERROR) << "captureFrame04 code: " << ret;
+                LOG(ERROR) << "captureFrame04 code2: " << ret;
                 handle_error(ret);
             }
         }
