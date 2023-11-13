@@ -626,8 +626,18 @@ int handle_cmd_get_frame_05_parallel(int client_sock)
     ret = scan3d_.captureFrame05();
     if (DF_SUCCESS != ret)
     {
-        LOG(ERROR) << "captureFrame05 code: " << ret;
-		handle_error(ret);
+        LOG(ERROR) << "captureFrame05 code0: " << ret;
+        ret = scan3d_.captureFrame05();
+        if (DF_SUCCESS != ret)
+        {
+            LOG(ERROR) << "captureFrame05 code1: " << ret;
+            ret = scan3d_.captureFrame05();
+            if (DF_SUCCESS != ret)
+            {
+                LOG(ERROR) << "captureFrame05 code2: " << ret;
+		        handle_error(ret);
+            }
+        }
     }
 
     LOG(INFO) << "Reconstruct captureFrame05 Finished!";
