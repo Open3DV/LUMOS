@@ -59,7 +59,7 @@ SettingsFileFunction::SettingsFileFunction()
 	gui_config_.Instance().low_z_value = 300;
 	gui_config_.Instance().high_z_value = 3000;
 	gui_config_.Instance().calibration_board = 20;
-	gui_config_.Instance().repetition_count = 0;
+	gui_config_.Instance().repetition_count = 2;
 	gui_config_.Instance().last_path = "../TestData";
 	gui_config_.Instance().exposure_model = 0;
 	gui_config_.Instance().camera_type = 0;

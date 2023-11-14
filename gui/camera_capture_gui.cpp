@@ -1555,6 +1555,7 @@ void CameraCaptureGui::captureOneFrameBaseThread(bool hdr)
 		return;
 	}
 	capturing_flag_ = true;
+	ui.checkBox_select_camera->setDisabled(true);
 
 	//addLogMessage(u8"采集数据：");
 
@@ -1741,6 +1742,7 @@ void CameraCaptureGui::captureOneFrameBaseThread(bool hdr)
 		addLogMessage(u8"采集失败！");
 	}
 
+	ui.checkBox_select_camera->setEnabled(true);
 	capturing_flag_ = false;
 }
 
@@ -1773,10 +1775,8 @@ bool CameraCaptureGui::MergeRBGImage(cv::Mat& image1, cv::Mat& image2, cv::Mat& 
 	return true;
 }
 
-
 void CameraCaptureGui::captureOneRawFrameBaseThread()
 {
-
 	if (!connected_flag_)
 	{
 		return;
@@ -1787,6 +1787,7 @@ void CameraCaptureGui::captureOneRawFrameBaseThread()
 	{
 		return;
 	}
+	ui.checkBox_select_camera->setDisabled(true);
 	capturing_flag_ = true;
 
 	//addLogMessage(u8"采集数据：");
@@ -1884,6 +1885,8 @@ void CameraCaptureGui::captureOneRawFrameBaseThread()
 	delete[] raw_images_buffer;
 
 	capturing_flag_ = false;
+	ui.checkBox_select_camera->setEnabled(true);
+
 }
 
 bool CameraCaptureGui::captureOneFrameData()
@@ -3111,6 +3114,7 @@ void  CameraCaptureGui::do_pushButton_capture_continuous()
 		ui.pushButton_capture_one_frame->setEnabled(true);
 		ui.pushButton_calibrate_external_param->setEnabled(true);
 		ui.pushButton_test_accuracy->setEnabled(true);
+		ui.checkBox_select_camera->setEnabled(true);
 	}
 	else
 	{
@@ -3124,6 +3128,7 @@ void  CameraCaptureGui::do_pushButton_capture_continuous()
 			ui.pushButton_capture_one_frame->setDisabled(true);
 			ui.pushButton_calibrate_external_param->setDisabled(true);
 			ui.pushButton_test_accuracy->setDisabled(true);
+			ui.checkBox_select_camera->setDisabled(true);
 		}
 		else
 		{
