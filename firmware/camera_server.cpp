@@ -720,6 +720,66 @@ int handle_cmd_get_frame_05_parallel(int client_sock)
     return DF_SUCCESS;
 }
 
+int handle_cmd_get_brightness(int client_sock)
+{
+    if (check_token(client_sock) == DF_FAILED)
+    {
+        return DF_FAILED;
+    }
+
+	frame_status_ = DF_FRAME_CAPTURING;
+    int ret = DF_SUCCESS;
+
+    int color_brightness_buf_size = rgb_camera_width_ * rgb_camera_height_ * 3 / 4;
+    unsigned char* color_brightness = new unsigned char[color_brightness_buf_size];
+
+    LOG(INFO) << "captureColorBrightness";
+    ret = scan3d_.captureColorBrightness();
+    if (DF_SUCCESS != ret)
+    {
+        LOG(ERROR) << "captureColorBrightness code0: " << ret;
+        ret = scan3d_.captureColorBrightness();
+        if (DF_SUCCESS != ret)
+        {
+            LOG(ERROR) << "captureColorBrightness code1: " << ret;
+            ret = scan3d_.captureColorBrightness();
+            if (DF_SUCCESS != ret)
+            {
+                LOG(ERROR) << "captureColorBrightness code2: " << ret;
+		        handle_error(ret);
+            }
+        }
+    }
+
+    LOG(INFO) << "captureColorBrightness Finished!";
+    scan3d_.copyResizeColorBrightnessData(color_brightness);
+
+    LOG(INFO) << "start send color_brightness, buffer_size= " << color_brightness_buf_size;
+    ret = send_buffer(client_sock, (const char*)color_brightness, color_brightness_buf_size);
+    LOG(INFO) << "color_brightness ret= " << ret;
+
+    if (ret == DF_FAILED)
+    {
+        LOG(INFO) << "send error, close this connection!";
+        delete[] color_brightness;
+		frame_status_ = DF_ERROR_NETWORK;
+
+        return DF_FAILED;
+    }
+    
+    LOG(INFO) << "frame sent!";
+
+    delete[] color_brightness;
+	
+	if (frame_status_ == DF_FRAME_CAPTURING)
+    {
+        frame_status_ = DF_SUCCESS;
+    }
+
+
+    return DF_SUCCESS;
+}
+
 int handle_cmd_get_frame_03_parallel(int client_sock)
 {
     if (check_token(client_sock) == DF_FAILED)
@@ -2653,6 +2713,10 @@ int handle_commands(int client_sock)
     case DF_CMD_GET_FRAME_05:
     LOG(INFO) << "DF_CMD_GET_FRAME_05";
     ret = handle_cmd_get_frame_05_parallel(client_sock);
+    break;
+    case DF_CMD_GET_BRIGHTNESS:
+    LOG(INFO) << "DF_CMD_GET_BRIGHTNESS";
+    ret = handle_cmd_get_brightness(client_sock);
     break;
     case DF_CMD_HEARTBEAT:
         LOG(INFO) << "DF_CMD_HEARTBEAT";

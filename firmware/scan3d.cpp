@@ -1465,6 +1465,32 @@ int Scan3D::captureFrame05()
     return DF_SUCCESS;
 }
 
+int Scan3D::captureColorBrightness()
+{
+    if (!camera_rgb_->streamOn())
+    {
+        LOG(INFO) << "rgb camera stream on error! ";
+        camera_rgb_->streamOff();
+        return DF_ERROR_CAMERA_STREAM;
+    }
+    cuda_init_basic_memory();
+    LOG(INFO) << "finish init basic memory";
+
+    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->streamOff();
+    LOG(INFO) << "Stream Off";
+
+    cv::Mat rgbImageTemp(rgb_image_height_, rgb_image_width_, CV_8UC3, buff_color_brightness_);
+    cv::Mat resizeTemp;
+    cv::resize(rgbImageTemp, resizeTemp, cv::Size(rgbImageTemp.cols / 2, rgbImageTemp.rows / 2));
+    // resizeTemp.copyTo(rgbImageTemp);
+    memcpy(buff_color_brightness_, resizeTemp.data, rgb_image_height_ * rgb_image_width_ * 3 / 4);
+
+    return DF_SUCCESS;
+}
+
+
 int Scan3D::captureFrame08()
 {
     // projector_->setProjectorWorkingMode(1);

@@ -2012,6 +2012,60 @@ DF_SDK_API int DfGetFrameTest(float* depth, int depth_buf_size,
 	return DF_SUCCESS;
 }
 
+DF_SDK_API int GetBrightness(unsigned char* resize_color_brightness, int resize_color_brightness_buf_size)
+{
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+	LOG(INFO) << "GetBrightness";
+	assert(resize_color_brightness_buf_size == rgb_image_size_ * sizeof(unsigned char) / 4);
+	int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+	if (ret == DF_FAILED)
+	{
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+
+	ret = send_command(DF_CMD_GET_BRIGHTNESS, g_sock);
+	ret = send_buffer((char*)&token, sizeof(token), g_sock);
+	int command;
+	ret = recv_command(&command, g_sock);
+	if (ret == DF_FAILED)
+	{
+		LOG(ERROR) << "Failed to recv command";
+		close_socket(g_sock);
+		return DF_FAILED;
+	}
+
+	if (command == DF_CMD_OK)
+	{
+		LOG(INFO) << "token checked ok";
+
+		LOG(INFO) << "receiving buffer, color_brightness_buf_size=" << resize_color_brightness_buf_size;
+		ret = recv_buffer((char*)resize_color_brightness, resize_color_brightness_buf_size, g_sock);
+		LOG(INFO) << "color_brightness received";
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+	}
+	else if (command == DF_CMD_REJECT)
+	{
+		LOG(INFO) << "Get frame rejected";
+		close_socket(g_sock);
+		return DF_BUSY;
+	}
+
+	undistortResizeRGBBrightnessMap(resize_color_brightness);
+	LOG(INFO) << "Get brightness success";
+	close_socket(g_sock);
+	return DF_SUCCESS;
+}
+
 DF_SDK_API int DfGetCameraRawData01(unsigned char* raw, int raw_buf_size)
 {
 	int img_num = 36;

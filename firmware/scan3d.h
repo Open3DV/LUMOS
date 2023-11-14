@@ -71,6 +71,8 @@ public:
 
     int captureFrameTest(unsigned char* patterns_buf);
 
+    int captureColorBrightness();
+
     bool readCalibParam();
 
     bool writeCalibParamUser();

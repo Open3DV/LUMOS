@@ -224,6 +224,13 @@ extern "C"
 	DF_SDK_API int DfGetFrameTest(float* depth, int depth_buf_size,
 		unsigned char* brightness, int brightness_buf_size, unsigned char* patterns, int patterns_buf_size);
 
+	//函数名： GetBrightness
+	//功能： 获取一个亮度图数据
+	//输入参数：brightness_buf_size（亮度图尺寸sizeof(unsigned char) * width * height）
+	//输出参数：brightness
+	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
+	DF_SDK_API int GetBrightness(unsigned char* resize_color_brightness, int resize_color_brightness_buf_size);
+
 	//函数名： DfGetCameraRawData01
 	//功能： 采集一组8bit条纹图，一共28张，4张相移条纹图 + 8张格雷码图 + 2张黑白图
 	//输入参数：raw_buf_size（28张8位图的尺寸）
