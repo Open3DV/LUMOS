@@ -246,6 +246,13 @@ extern "C"
 	//返回值： 类型（int）:返回0表示获取采集数据成功;返回-1表示采集数据失败.
 	DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp);
 
+	//函数名： GetBrightness
+	//功能： 单独拍照获取一个彩色亮度图数据
+	//输入参数：brightness_buf_size（亮度图尺寸sizeof(unsigned char) * width * height）
+	//输出参数：brightness
+	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
+	DF_SDK_API int GetBrightness(unsigned char* resize_color_brightness, int resize_color_brightness_buf_size);
+
 	//函数名： DfGetBrightnessData
 	//功能： 获取亮度图
 	//输入参数：无

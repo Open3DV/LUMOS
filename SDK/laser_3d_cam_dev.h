@@ -225,7 +225,7 @@ extern "C"
 		unsigned char* brightness, int brightness_buf_size, unsigned char* patterns, int patterns_buf_size);
 
 	//函数名： GetBrightness
-	//功能： 获取一个亮度图数据
+	//功能： 单独拍照获取一个彩色亮度图数据
 	//输入参数：brightness_buf_size（亮度图尺寸sizeof(unsigned char) * width * height）
 	//输出参数：brightness
 	//返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
