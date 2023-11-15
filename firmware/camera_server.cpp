@@ -919,8 +919,16 @@ int handle_cmd_get_frame_01_hdr_parallel(int client_sock)
     ret = scan3d_.captureFrame08MixedHDR();
     if (DF_SUCCESS != ret)
     {
-        LOG(ERROR) << "captureFrame08HDR code: " << ret;
-        handle_error(ret);
+        ret = scan3d_.captureFrame08MixedHDR(repetition_count);
+        if (DF_SUCCESS != ret)
+        {
+            ret = scan3d_.captureFrame08MixedHDR(repetition_count);
+            if (DF_SUCCESS != ret)
+            {
+                handle_error(ret);
+                LOG(ERROR) << "captureFrame08HDR code: " << ret;
+            }
+        }
     }
 
     LOG(INFO) << "Reconstruct captureFrame08HDR Finished!";
@@ -1018,8 +1026,16 @@ int handle_cmd_get_repetition_frame_01(int client_sock)
     ret = scan3d_.captureFrame08Repetition(repetition_count);
     if (DF_SUCCESS != ret)
     {
-        LOG(ERROR) << "captureFrame08Repetition code: " << ret;
-		handle_error(ret);
+        ret = scan3d_.captureFrame08Repetition(repetition_count);
+        if (DF_SUCCESS != ret)
+        {
+            ret = scan3d_.captureFrame08Repetition(repetition_count);
+            if (DF_SUCCESS != ret)
+            {
+                handle_error(ret);
+                LOG(ERROR) << "captureFrame08Repetition code: " << ret;
+            }
+        }
     }
 
     LOG(INFO) << "Reconstruct captureFrame08Repetition Finished!";
@@ -1106,8 +1122,16 @@ int handle_cmd_get_frame_04_hdr_parallel(int client_sock)
     ret = scan3d_.captureFrame04MixedHDR();
     if (DF_SUCCESS != ret)
     {
-        LOG(ERROR) << "captureFrame04HDR code: " << ret;
-        handle_error(ret);
+        ret = scan3d_.captureFrame04MixedHDR(repetition_count);
+        if (DF_SUCCESS != ret)
+        {
+            ret = scan3d_.captureFrame04MixedHDR(repetition_count);
+            if (DF_SUCCESS != ret)
+            {
+                handle_error(ret);
+                LOG(ERROR) << "captureFrame04MixedHDR code: " << ret;
+            }
+        }
     }
 
     LOG(INFO) << "Reconstruct captureFrame04HDR Finished!";
@@ -1228,8 +1252,16 @@ int handle_cmd_get_repetition_frame_04(int client_sock)
     ret = scan3d_.captureFrame04Repetition(repetition_count);
     if (DF_SUCCESS != ret)
     {
-		handle_error(ret);
-        LOG(ERROR) << "captureFrame04Repetition code: " << ret;
+        ret = scan3d_.captureFrame04Repetition(repetition_count);
+        if (DF_SUCCESS != ret)
+        {
+            ret = scan3d_.captureFrame04Repetition(repetition_count);
+            if (DF_SUCCESS != ret)
+            {
+                handle_error(ret);
+                LOG(ERROR) << "captureFrame04Repetition code: " << ret;
+            }
+        }
     }
 
     LOG(INFO) << "Reconstruct captureFrame04Repetition Finished!";
