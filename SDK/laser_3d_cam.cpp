@@ -38,6 +38,7 @@ bool connected = false;
 long long token = 0;
 //const char* camera_id_;
 std::string camera_id_;
+std::string firmware_version_;
 std::thread heartbeat_thread;
 int heartbeat_error_count_ = 0;
 
@@ -4190,7 +4191,23 @@ DF_SDK_API int DfCaptureData(int exposure_num, char* timestamp)
 		}
 		else if (lumos_camera_select_ == LumosCameraSelect::RGBCamera)
 		{
-			ret = DfGetFrame05(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
+			bool firmware_too_old = true;
+			if (firmwareVersionIsOlder(20231025150621, firmware_too_old) == DF_SUCCESS)
+			{
+				if (firmware_too_old)
+				{
+					ret = DfGetFrame04(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
+				}
+				else
+				{
+					ret = DfGetFrame05(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
+				}
+			}
+			else
+			{
+				ret = DfGetFrame04(depth_buf_, depth_buf_size_, brightness_buf_, brightness_buf_size_, rgb_brightness_buf_, rgb_brightness_buf_size_, resize_color_brightness_buf_, resize_color_brightness_buf_size_, resize_color_depth_buf_, resize_color_depth_buf_size_);
+			}
+
 			if (DF_SUCCESS != ret)
 			{
 				LOG(ERROR) << "DfGetFrame05 Failed";
@@ -4396,7 +4413,49 @@ DF_SDK_API int DfGetFirmwareVersion(char* pVersion, int length)
 		return DF_BUSY;
 	}
 
+	std::string firmware_version(pVersion);
+	firmware_version_ = firmware_version;
 	close_socket(g_sock);
+	return DF_SUCCESS;
+}
+
+int pos(std::string T, std::string P, int n)
+{
+	if (n == 0)return -1;
+	int count = 0;
+	unsigned begined = 0;
+	while ((begined = T.find(P, begined)) != std::string::npos)
+	{
+		count++;
+		begined += P.length();
+		if (n == count)
+		{
+			return begined - 1;
+		}
+	}
+	return -2;
+}
+
+int firmwareVersionIsOlder(long long version_num, bool& firmware_is_older)
+{
+	int goal_pos = pos(firmware_version_, " ", 4);
+	if (goal_pos < 0)
+	{
+		return DF_FAILED;
+	}
+	
+	std::string real_time = firmware_version_.substr(goal_pos + 1, 4) + firmware_version_.substr(goal_pos + 6, 2) + firmware_version_.substr(goal_pos + 9, 2) + firmware_version_.substr(goal_pos + 12, 2) + firmware_version_.substr(goal_pos + 15, 2) + firmware_version_.substr(goal_pos + 18, 2);
+	long long firmware_time = std::stoll(real_time);
+
+	if (firmware_time < version_num)
+	{
+		firmware_is_older = true;
+	}
+	else
+	{
+		firmware_is_older = false;
+	}
+
 	return DF_SUCCESS;
 }
 

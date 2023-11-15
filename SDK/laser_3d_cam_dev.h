@@ -529,6 +529,13 @@ DF_SDK_API int DfGetProjectorVersion(int& version);
 //返回值：  类型（int）:返回0表示连接成功;返回-1表示连接失败.
 DF_SDK_API int DfGetFirmwareVersion(char* pVersion, int length);
 
+//函数名：  firmwareVersionIsOlder
+//功能：    获取固件版本
+//输入参数：版本号缓冲区地址，缓冲区长度
+//输出参数：版本号
+//返回值：  类型（int）:返回0表示连接成功;返回-1表示失败.
+int firmwareVersionIsOlder(long long version_num, bool& firmware_is_older);
+
 //函数名： DfGetProductInfo
 //功能： 设置标定板检测
 //输入参数：info(信息)，lenth(信息长度) 
