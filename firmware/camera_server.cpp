@@ -919,10 +919,10 @@ int handle_cmd_get_frame_01_hdr_parallel(int client_sock)
     ret = scan3d_.captureFrame08MixedHDR();
     if (DF_SUCCESS != ret)
     {
-        ret = scan3d_.captureFrame08MixedHDR(repetition_count);
+        ret = scan3d_.captureFrame08MixedHDR();
         if (DF_SUCCESS != ret)
         {
-            ret = scan3d_.captureFrame08MixedHDR(repetition_count);
+            ret = scan3d_.captureFrame08MixedHDR();
             if (DF_SUCCESS != ret)
             {
                 handle_error(ret);
@@ -1122,10 +1122,10 @@ int handle_cmd_get_frame_04_hdr_parallel(int client_sock)
     ret = scan3d_.captureFrame04MixedHDR();
     if (DF_SUCCESS != ret)
     {
-        ret = scan3d_.captureFrame04MixedHDR(repetition_count);
+        ret = scan3d_.captureFrame04MixedHDR();
         if (DF_SUCCESS != ret)
         {
-            ret = scan3d_.captureFrame04MixedHDR(repetition_count);
+            ret = scan3d_.captureFrame04MixedHDR();
             if (DF_SUCCESS != ret)
             {
                 handle_error(ret);
