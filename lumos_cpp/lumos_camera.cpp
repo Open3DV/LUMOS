@@ -1,7 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "lumos_camera.h"
 #include "../firmware/easylogging++.h"
-#include "../sdk/camera_status.h"
+#include "../SDK/camera_status.h"
 #include "../firmware/protocol.h"
 #include "../test/triangulation.h"
 #include <chrono>
