@@ -50,6 +50,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lumos", "lumos", "{3532830F-FEA7-443E-A04B-ACE845CDFE63}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lumos_cpp", "lumos_cpp\lumos_cpp.vcxproj", "{51A41A11-DFA7-40DE-A7CA-E4F27BDF0535}"
+	ProjectSection(ProjectDependencies) = postProject
+		{3458C82C-75E9-4906-A297-300690115960} = {3458C82C-75E9-4906-A297-300690115960}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lumos_cpp_example", "lumos_cpp_example\lumos_cpp_example.vcxproj", "{A1FC5682-90ED-40EB-BB20-AE6912A373A0}"
 	ProjectSection(ProjectDependencies) = postProject
