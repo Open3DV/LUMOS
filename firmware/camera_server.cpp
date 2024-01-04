@@ -2911,10 +2911,20 @@ int handle_commands(int client_sock)
 
 int init()
 {
+    LOG(INFO) << "开始启动计时，启动20s未成功，相机将会重启！";
+    scan3d_.reboot_flag_enable("reboot_flag.txt", 2);
     if (!scan3d_.init())
     {
-        LOG(INFO) << "init Failed!";
+        LOG(INFO) << "Scan3D init Failed!";
+        scan3d_.reboot_flag_enable("reboot_flag.txt", 1);
+        LOG(INFO) << "启动失败，相机将会立即重启";
         // return DF_FAILED;
+    }
+    else
+    {
+        LOG(INFO) << "相机启动成功";
+        scan3d_.reboot_flag_enable("reboot_flag.txt", 0);
+        scan3d_.reboot_flag_enable("reboot_times.txt", 0);
     }
 
     max_camera_exposure_ = scan3d_.getParamMaxCameraExposure();

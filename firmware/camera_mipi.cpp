@@ -209,8 +209,24 @@ bool CameraMIPI::openCamera()
 {
     // 创建一个生产者线程
     factoryThread_m = new FactoryThread();
-    factoryThread_m->initialize();
-    factoryThread_m->waitRunning();    
+    if (!factoryThread_m->initialize())
+    {
+        std::cout << "factoryThread initialize failed! " << std::endl;
+        return false;
+    }
+    else
+    {
+        std::cout << "factoryThread initialize success! " << std::endl;
+    }
+    if (!factoryThread_m->waitRunning())
+    {
+        std::cout << "wait running failed! " << std::endl;
+        return false;
+    }
+    else
+    {
+        std::cout << "wait running success! " << std::endl;
+    }
     sleep(3);
 
     capture_buf_m = -1;

@@ -29,6 +29,24 @@ Scan3D::~Scan3D()
 
 }
 
+bool Scan3D::reboot_flag_enable(std::string file_path, int reboot_falg)
+{
+    std::ofstream ofs(file_path);
+
+    if (ofs.is_open())
+    {
+        ofs << reboot_falg;
+        ofs.close();
+    }
+    else
+    {
+        return false;
+    }
+
+    return true;
+
+}
+
 cudaStream_t stream1_, stream2_, stream3_, stream4_;
 
 int Scan3D::init()
@@ -48,6 +66,7 @@ int Scan3D::init()
     if (true != ret)
     {
         LOG(ERROR) << "laser init FAILED";
+        return false;
     }
 
     //相机初始化
@@ -114,7 +133,11 @@ int Scan3D::init()
     if (camera_rgb_->openCamera())
     {
         LOG(INFO) << "open rgb camera success!";
-        camera_rgb_->streamOn();
+        if (!camera_rgb_->streamOn())
+        {
+            LOG(INFO) << "stream on rgb camera error";
+            return false;
+        }
         camera_rgb_->getImageSize(rgb_image_width_, rgb_image_height_);
         cv::Mat img_tepm(rgb_image_height_, rgb_image_width_, CV_8UC3);
         for (int i = 0; i < 10; i += 1)
@@ -130,6 +153,7 @@ int Scan3D::init()
     else
     {
         LOG(INFO) << "open rgb camera failed!";
+        return false;
     }
 
 

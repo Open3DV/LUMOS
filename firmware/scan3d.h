@@ -27,6 +27,8 @@ public:
 
     bool cameraIsValid();
 
+    bool reboot_flag_enable(std::string file_path, int reboot_falg);
+
     bool setParamExposure(float exposure);
 
     bool getParamExposure(float& exposure);
