@@ -75,3 +75,106 @@ bool CalibrationParamGui::setShowCalibrationMessage(struct SystemConfigParam con
 
 	return true;
 }
+
+bool CalibrationParamGui::setShowCalibrationMessage(struct SystemConfigParam config_param, struct CameraCalibParam calibration_param, bool selected_gray_camera)
+{
+	system_config_param_ = config_param;
+	camera_calibration_param_ = calibration_param;
+
+	QString distort_str = "";
+
+	if (selected_gray_camera)
+	{
+		for (int i = 0; i < 5; i++)
+		{
+			distort_str += QString::number(calibration_param.camera_distortion[i]);
+			distort_str += "\t";
+		}
+	}
+	else
+	{
+		for (int i = 0; i < 5; i++)
+		{
+			distort_str += QString::number(0);
+			distort_str += "\t";
+		}
+	}
+
+	ui.textEdit_distortion->setText(distort_str);
+
+	float extrinsic[12] = { 1,0,0,0,1,0,0,0,1,0,0,0 };
+
+	QString extrinsic_str;
+
+
+	for (int r = 0; r < 3; r++)
+	{
+		for (int c = 0; c < 3; c++)
+		{
+			extrinsic_str += QString::number(extrinsic[r * 3 + c]);
+			extrinsic_str += "\t \t";
+		}
+		extrinsic_str += QString::number(extrinsic[9 + r]);
+		extrinsic_str += "\r\n";
+	}
+
+
+	ui.textEdit_extrinsic->setText(extrinsic_str);
+
+
+	QString intrinsic_str = "";
+
+	if (selected_gray_camera)
+	{
+		for (int r = 0; r < 3; r++)
+		{
+			for (int c = 0; c < 3; c++)
+			{
+				intrinsic_str += QString::number(calibration_param.camera_intrinsic[r * 3 + c]);
+				intrinsic_str += "\t \t";
+			}
+			intrinsic_str += "\r\n";
+		}
+	}
+	else
+	{
+		for (int r = 0; r < 3; r++)
+		{
+			for (int c = 0; c < 3; c++)
+			{
+				if (r == 2 && c == 2)
+				{
+					intrinsic_str += QString::number(1);
+					intrinsic_str += "\t \t";
+				}
+				else
+				{
+					intrinsic_str += QString::number(calibration_param.rgb_camera_intrinsic[r * 3 + c] / 2);
+					intrinsic_str += "\t \t";
+				}
+			}
+			intrinsic_str += "\r\n";
+		}
+	}
+
+
+	ui.textEdit_intrinsic->setText(intrinsic_str);
+
+
+
+	QString plane_str = "";
+
+	for (int r = 0; r < 3; r++)
+	{
+		for (int c = 0; c < 3; c++)
+		{
+			plane_str += QString::number(config_param.standard_plane_external_param[r * 3 + c]);
+			plane_str += " \t";
+		}
+		plane_str += QString::number(config_param.standard_plane_external_param[9 + r]);
+		plane_str += "\r\n";
+	}
+	ui.textEdit_standard_plane->setText(plane_str);
+
+	return true;
+}

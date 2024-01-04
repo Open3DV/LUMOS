@@ -16,6 +16,8 @@ public:
 	~CalibrationParamGui();
 
 	bool setShowCalibrationMessage(struct SystemConfigParam config_param, struct CameraCalibParam calibration_param);
+
+	bool setShowCalibrationMessage(struct SystemConfigParam config_param, struct CameraCalibParam calibration_param, bool selected_gray_camera);
 	 
 
 private:

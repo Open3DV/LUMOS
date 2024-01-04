@@ -473,14 +473,14 @@ DF_SDK_API int DfSetCalibrationParam(const struct CameraCalibParam& calibration_
 //返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
 DF_SDK_API int DfRegisterOnDropped(int (*p_function)(void*));
 
-//函数名： DfGetCalibrationParam
+//函数名： DfGetSystemConfigParam
 //功能：获取相机配置参数接口
 //输入参数：config_param（配置参数）
 //输出参数：无
 //返回值： 类型（int）:返回0表示连接成功;返回-1表示连接失败.
 DF_SDK_API int DfGetSystemConfigParam(struct SystemConfigParam& config_param);
 
-//函数名： DfGetCalibrationParam
+//函数名： DfSetSystemConfigParam
 //功能：设置相机配置参数接口
 //输入参数：config_param（配置参数）
 //输出参数：无

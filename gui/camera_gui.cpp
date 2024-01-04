@@ -164,7 +164,7 @@ void camera_gui::do_action_show_calibration_param()
 
 	if (ret)
 	{
-		show_calib_param_gui_.setShowCalibrationMessage(config_param, calibration_param);
+		show_calib_param_gui_.setShowCalibrationMessage(config_param, calibration_param, processing_gui_settings_data_.Instance().camera_type == 0 ? true : false);
 		show_calib_param_gui_.exec();
 	}
 	else
