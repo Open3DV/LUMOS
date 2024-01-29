@@ -193,7 +193,7 @@ __global__ void kernel_code_rectify_8bit(int width, int height, unsigned char* d
 
 	if (idx < width && idy < height)
 	{
-		d_in_code[offset] += !(d_in_code[offset] % 2) * (d_in_phase[offset] < 96) * (d_in_code[offset] < 255) + (d_in_code[offset] % 2) * (d_in_phase[offset] > 160) * (d_in_code[offset] > 0) * (-1);
+		d_in_code[offset] += !(d_in_code[offset] % 2) * (d_in_phase[offset] < 64) * (d_in_code[offset] < 255) + (d_in_code[offset] % 2) * (d_in_phase[offset] > 192) * (d_in_code[offset] > 0) * (-1);
 		if (mask_noise[offset])
 		{
 			d_in_code[offset] = 0;
