@@ -8,6 +8,8 @@
 #include <chrono>         // std::chrono::milliseconds
 #include <thread>         // std::thread
 #include <mutex>          // std::timed_mutex
+#include <iostream>
+#include <string.h>
 
 
 #define NUM_BUFFERS 5         /* Number of buffers used for grabbing. */
@@ -42,6 +44,8 @@ public:
 	bool grap(unsigned short* buf);
 
 	bool setPixelFormat(int val);
+
+	bool printInfo();
 private:
 	void streamOffThread();
 private:
@@ -49,4 +53,6 @@ private:
     void* handle_ = NULL;                     /* Handle for the pylon device. */ 
  
 	std::mutex operate_mutex_;
+
+	unsigned short* null_image_;
 };
