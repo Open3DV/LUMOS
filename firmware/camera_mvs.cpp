@@ -33,12 +33,15 @@ bool PrintDeviceInfo(MV_CC_DEVICE_INFO* pstMVDevInfo)
 
 CameraMVS::CameraMVS()
 {
-
+    pData_ = NULL;
+    nDataSize_ = 0;
+    camera_sn_ = "";
+    camera_is_opened_ = false;
 }
 
 CameraMVS::~CameraMVS()
 {
-    delete[] null_image_;
+
 }
 
 bool CameraMVS::openCamera()
@@ -490,15 +493,19 @@ bool CameraMVS::openCameraBySN(std::string sn)
 
     // 开始取流
     // start grab image
-    nRet = MV_CC_StartGrabbing(handle_);
-    if (MV_OK != nRet)
+    if (!camera_is_opened_)
     {
-        printf("MV_CC_StartGrabbing fail! nRet [%x]\n", nRet);
-        return false;
+        nRet = MV_CC_StartGrabbing(handle_);
+        if (MV_OK != nRet)
+        {
+            printf("MV_CC_StartGrabbing fail! nRet [%x]\n", nRet);
+            return false;
+        }
+        camera_is_opened_ = true;
     }
 
-    null_image_ = new unsigned short[image_width_ * image_height_];
-    
+
+    camera_sn_ = sn;
 
     return true;
 }
@@ -531,32 +538,15 @@ bool CameraMVS::streamOn()
 {
     int i = 0;
     int nRet = MV_OK;
-    MVCC_INTVALUE stParam;
-    memset(&stParam, 0, sizeof(MVCC_INTVALUE));
-    nRet = MV_CC_GetIntValue(handle_, "PayloadSize", &stParam);
-    if (MV_OK != nRet)
-    {
-        printf("Get PayloadSize fail! nRet [0x%x]\n", nRet);
-        return NULL;
-    }
 
-    MV_FRAME_OUT_INFO_EX stImageInfo = {0};
-    memset(&stImageInfo, 0, sizeof(MV_FRAME_OUT_INFO_EX));
-    unsigned char *pData = (unsigned char *)malloc(sizeof(unsigned char) * stParam.nCurValue);
-    if (NULL == pData)
-    {
-        return NULL;
-    }
-    unsigned int nDataSize = stParam.nCurValue;
+    printf("stream on");
 
-    printf("Copy buffer size: %d\n", nDataSize);
     while(1)
     {
-        nRet = MV_CC_GetOneFrameTimeout(handle_, pData, nDataSize, &stImageInfo, 0);
+        nRet = MV_CC_GetOneFrameTimeout(handle_, pData_, nDataSize_, &stImageInfo_, 0);
         if (nRet != MV_OK)
         {
             std::cout << "noise iamges: " << i << std::endl;
-            free(pData);
             return true;
         }
         else
@@ -575,39 +565,19 @@ bool CameraMVS::grap(unsigned char *buf)
 {
     int nRet = MV_OK;
 
-    // ch:获取数据包大小 | en:Get payload size
-    MVCC_INTVALUE stParam;
-    memset(&stParam, 0, sizeof(MVCC_INTVALUE));
-    nRet = MV_CC_GetIntValue(handle_, "PayloadSize", &stParam);
-    if (MV_OK != nRet)
-    {
-        printf("Get PayloadSize fail! nRet [0x%x]\n", nRet);
-        return NULL;
-    }
+    printf(("camera " + camera_sn_ + " captured!\n").c_str());
 
-    MV_FRAME_OUT_INFO_EX stImageInfo = {0};
-    memset(&stImageInfo, 0, sizeof(MV_FRAME_OUT_INFO_EX));
-    unsigned char *pData = (unsigned char *)malloc(sizeof(unsigned char) * stParam.nCurValue);
-    if (NULL == pData)
-    {
-        return NULL;
-    }
-    unsigned int nDataSize = stParam.nCurValue;
-
-    nRet = MV_CC_GetOneFrameTimeout(handle_, pData, nDataSize, &stImageInfo, 1000);
+    nRet = MV_CC_GetOneFrameTimeout(handle_, pData_, nDataSize_, &stImageInfo_, 1000);
     if (nRet == MV_OK)
     {
-        memcpy(buf, pData, stImageInfo.nHeight * stImageInfo.nWidth);
+        memcpy(buf, pData_, stImageInfo_.nHeight * stImageInfo_.nWidth);
     }
     else
     {
         printf("No data[%x]\n", nRet);
 
-        free(pData);
         return false;
     }
-
-    free(pData);
 
     return true;
 }
@@ -616,41 +586,21 @@ bool CameraMVS::grap(unsigned short* buf)
 {
     int nRet = MV_OK;
 
-    // ch:获取数据包大小 | en:Get payload size
-    MVCC_INTVALUE stParam;
-    memset(&stParam, 0, sizeof(MVCC_INTVALUE));
-    nRet = MV_CC_GetIntValue(handle_, "PayloadSize", &stParam);
-    if (MV_OK != nRet)
-    {
-        printf("Get PayloadSize fail! nRet [0x%x]\n", nRet);
-        return NULL;
-    }
+    printf(("camera " + camera_sn_ + " captured!\n").c_str());
 
-    MV_FRAME_OUT_INFO_EX stImageInfo = {0};
-    memset(&stImageInfo, 0, sizeof(MV_FRAME_OUT_INFO_EX));
-    unsigned char *pData = (unsigned char *)malloc(sizeof(unsigned char) * stParam.nCurValue);
-    if (NULL == pData)
-    {
-        return NULL;
-    }
-    unsigned int nDataSize = stParam.nCurValue;
+    std::cout << "nDataSize_: " << nDataSize_ << std::endl;
 
-    printf("Copy buffer size: %d\n", nDataSize);
-
-    nRet = MV_CC_GetOneFrameTimeout(handle_, pData, nDataSize, &stImageInfo, 1000);
+    nRet = MV_CC_GetOneFrameTimeout(handle_, pData_, nDataSize_, &stImageInfo_, 1000);
     if (nRet == MV_OK)
     {
-        memcpy(buf, pData, nDataSize);
+        memcpy(buf, pData_, nDataSize_);
     }
     else
     {
         printf("No data[%x]\n", nRet);
 
-        free(pData);
         return false;
     }
-
-    free(pData);
 
     return true;
 }
@@ -658,6 +608,18 @@ bool CameraMVS::grap(unsigned short* buf)
 bool CameraMVS::setPixelFormat(int val)
 {
     int nRet = 0;
+
+    if (camera_is_opened_)
+    {
+        nRet = MV_CC_StopGrabbing(handle_);
+        if (nRet != MV_OK)
+        {
+            printf("Stop Grabbing fail! nRet [0x%x]\n", nRet);
+            return false;
+        }
+        camera_is_opened_ = false;
+    }
+
     switch (val)
     {
     case 8:
@@ -668,6 +630,7 @@ bool CameraMVS::setPixelFormat(int val)
             return false;
         }
         break;
+
     case 12:
         nRet = MV_CC_SetEnumValue(handle_, "PixelFormat", MvGvspPixelType::PixelType_Gvsp_Mono12);
         if (MV_OK != nRet)
@@ -675,12 +638,75 @@ bool CameraMVS::setPixelFormat(int val)
             printf("Set Pixel Format fail! nRet [0x%x]\n", nRet);
             return false;
         }
-        break;    
+        break;   
+
     default:
         break;
     }
-    return true;
 
+    if (!camera_is_opened_)
+    {
+        nRet = MV_CC_StartGrabbing(handle_);
+        if (MV_OK != nRet)
+        {
+            printf("MV_CC_StartGrabbing fail! nRet [%x]\n", nRet);
+            return false;
+        }
+        camera_is_opened_ = true;
+    }
+
+    // 设置完成参数之后应当对图片内存重新开辟；
+    if (pData_ == NULL)
+    {
+        MVCC_INTVALUE stParam;
+        memset(&stParam, 0, sizeof(MVCC_INTVALUE));
+
+        nRet = MV_CC_GetIntValue(handle_, "PayloadSize", &stParam);
+        if (MV_OK != nRet)
+        {
+            printf("Get PayloadSize fail! nRet [0x%x]\n", nRet);
+            return false;
+        }
+
+        stImageInfo_ = {0};
+        memset(&stImageInfo_, 0, sizeof(MV_FRAME_OUT_INFO_EX));
+
+        std::cout << "malloc buffer: " << stParam.nCurValue << std::endl;
+        pData_ = (unsigned char *)malloc(sizeof(unsigned char) * stParam.nCurValue);
+        nDataSize_ = stParam.nCurValue;
+        if (NULL == pData_)
+        {
+            return false;
+        }
+    }
+    else
+    {
+        free(pData_);
+
+        MVCC_INTVALUE stParam;
+        memset(&stParam, 0, sizeof(MVCC_INTVALUE));
+
+        nRet = MV_CC_GetIntValue(handle_, "PayloadSize", &stParam);
+        if (MV_OK != nRet)
+        {
+            printf("Get PayloadSize fail! nRet [0x%x]\n", nRet);
+            return false;
+        }
+
+        stImageInfo_ = {0};
+        memset(&stImageInfo_, 0, sizeof(MV_FRAME_OUT_INFO_EX));
+
+        std::cout << "malloc buffer: " << stParam.nCurValue << std::endl;
+        pData_ = (unsigned char *)malloc(sizeof(unsigned char) * stParam.nCurValue);
+        nDataSize_ = stParam.nCurValue;
+        if (NULL == pData_)
+        {
+            return false;
+        }
+    }
+
+
+    return true;
 }
 
 bool CameraMVS::trigger_software()

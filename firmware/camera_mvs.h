@@ -19,23 +19,23 @@ class CameraMVS: public Camera
 public:
 	CameraMVS();
 	~CameraMVS();
- 
-	bool openCamera(); 
-	bool openCameraLeft(); 
-	bool openCameraRight(); 
-	bool openCameraBySN(std::string sn);
-	bool closeCamera(); 
 
-	bool switchToInternalTriggerMode(); 
+	bool openCamera();
+	bool openCameraLeft();
+	bool openCameraRight();
+	bool openCameraBySN(std::string sn);
+	bool closeCamera();
+
+	bool switchToInternalTriggerMode();
 	bool switchToExternalTriggerMode();
 
-	bool getExposure(double &val); 
-	bool setExposure(double val); 
+	bool getExposure(double &val);
+	bool setExposure(double val);
 
 	bool getGain(double &value);
-	bool setGain(double value);  
+	bool setGain(double value);
 
-    bool streamOn(); 
+    bool streamOn();
 	bool streamOff();
  
     bool trigger_software();
@@ -54,5 +54,13 @@ private:
  
 	std::mutex operate_mutex_;
 
-	unsigned short* null_image_;
+	unsigned char* pData_;
+
+	unsigned int nDataSize_;
+
+	std::string camera_sn_;
+
+	MV_FRAME_OUT_INFO_EX stImageInfo_;
+
+	bool camera_is_opened_;
 };
