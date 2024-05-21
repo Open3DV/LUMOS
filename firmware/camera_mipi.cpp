@@ -87,7 +87,7 @@ bool FactoryThread::threadExecute()
     if (!iEglStreamSettings)
         ORIGINATE_ERROR("Failed to get IEGLOutputStreamSettings interface");
 
-    iEglStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_444_888);
+    iEglStreamSettings->setPixelFormat(PIXEL_FMT_YCbCr_420_888);
 
     /********获取sensor分辨率**********/
     ISensorMode *iSensorMode;
@@ -121,6 +121,8 @@ bool FactoryThread::threadExecute()
     UniqueObj<OutputStream> previewStream(iCaptureSession->createOutputStream(streamSettings.get()));
     outstream_ptr_m = previewStream.get();
     consumer_m = UniqueObj<FrameConsumer>(FrameConsumer::create(outstream_ptr_m));
+    if (!consumer_m)
+        ORIGINATE_ERROR("Failed to create FrameConsumer");
 
     PRODUCER_PRINT("Launching consumer thread\n");
 

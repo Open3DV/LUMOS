@@ -5,11 +5,13 @@
 #include "easylogging++.h"
 #include "camera_mvs.h"
 #include "camera_mipi.h"
+#include "camera_mipi_virtual.h"
 #include "camera_param.h"
 #include "vector"
 #include "system_config_settings.h"
 #include "projector_base.h"
 #include "projector_ainstec.h"
+#include "projector_fpga.h"
 #include <opencv2/opencv.hpp>
 
 //#define VIRTUAL_CAMERA
@@ -143,8 +145,7 @@ private:
     bool camera_left_opened_;
     bool camera_right_opened_;
 
-    AinstecProjector* projector_;
-
+    BaseProjector* projector_;
 
     bool camera_opened_flag_;
     

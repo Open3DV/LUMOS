@@ -59,7 +59,7 @@ int Scan3D::init()
     result_e = cudaStreamCreate(&stream4_);
     int ret = 0;
     //激光振镜初始化
-    projector_ = new AinstecProjector;
+    projector_ = new FpgaProjector;
     ret = projector_->init();
     //projector_->setProjectorWorkingMode(0);
 
@@ -94,16 +94,16 @@ int Scan3D::init()
 
     if (camera_opened_flag_ == false)
     {
-        LOG(INFO) << "Open MVS Camera:";
+        LOG(INFO) << "Open Camera:";
         camera_left_ = new CameraMVS();
         camera_right_ = new CameraMVS();
         if (!camera_left_->openCameraBySN(sn_left))
         {
-            LOG(INFO) << "Open Left MVS Camera Error!";
+            LOG(INFO) << "Open Left Camera Error!";
             camera_opened_flag_ = false;
             if (!camera_right_->openCameraBySN(sn_right))
             {
-                LOG(INFO) << "Open Right MVS Camera Error!";
+                LOG(INFO) << "Open Right Camera Error!";
                 camera_opened_flag_ = false;
             }
 
@@ -116,7 +116,7 @@ int Scan3D::init()
         }
         else if (!camera_right_->openCameraBySN(sn_right))
         {
-            LOG(INFO) << "Open Right MVS Camera Error!";
+            LOG(INFO) << "Open Right Camera Error!";
             camera_opened_flag_ = false;
 
             delete camera_left_;
@@ -125,7 +125,7 @@ int Scan3D::init()
         }
         else
         {
-            LOG(INFO) << "Open MVS Camera:";
+            LOG(INFO) << "Open Camera:";
             camera_opened_flag_ = true;
         }
     }
@@ -313,7 +313,7 @@ int Scan3D::init()
     cv::Mat weight_map;
 
     cv::stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, cv::Size(image_width_, image_height_), RR, 
-        T, Rl, Rr, Pl, Pr, Q, /*cv::CALIB_ZERO_DISPARITY*/0, 0, cv::Size(image_width_, image_height_), &roi1, &roi2);
+        T, Rl, Rr, Pl, Pr, Q, /*cv::CALIB_ZERO_DISPARITY*/0, -1, cv::Size(image_width_, image_height_), &roi1, &roi2);
 
     cv::initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pl, cv::Size(image_width_, image_height_), CV_16SC2, mapL1, mapL2);
 	cv::initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, cv::Size(image_width_, image_height_), CV_16SC2, mapR1, mapR2);
@@ -1321,14 +1321,14 @@ int Scan3D::captureFrame05()
     LOG(INFO) << "Stream On:";
     if (!camera_left_->streamOn())
     {
-        LOG(INFO) << "Stream On Error";
+        LOG(INFO) << "camera_left Stream On Error";
         camera_left_->streamOff();
         camera_right_->streamOff();
         return DF_ERROR_CAMERA_STREAM;
     }
     if (!camera_right_->streamOn())
     {
-        LOG(INFO) << "Stream On Error";
+        LOG(INFO) << "camera_right Stream On Error";
         camera_left_->streamOff();
         camera_right_->streamOff();
         return DF_ERROR_CAMERA_STREAM;
@@ -1514,7 +1514,6 @@ int Scan3D::captureColorBrightness()
     return DF_SUCCESS;
 }
 
-
 int Scan3D::captureFrame08()
 {
     // projector_->setProjectorWorkingMode(1);
@@ -1578,7 +1577,6 @@ int Scan3D::captureFrame08()
         {
             camera_left_->streamOff();
             camera_right_->streamOff();
-            
             return DF_ERROR_CAMERA_GRAP;
         }
 
@@ -2998,8 +2996,6 @@ void Scan3D::removeOutlierBaseDepthFilter()
         LOG(INFO) << "depth_filter_threshold: " << depth_threshold;
 
         depth_filter(depth_threshold / 1000.);
-
-        cuda_copy_depth_from_memory(buff_depth_);
     }
 }
 
@@ -3013,8 +3009,6 @@ void Scan3D::removeOutlierBaseRadiusFilter()
         LOG(INFO)<<"num: "<<num; 
 
         cuda_remove_points_base_radius_filter(0.5,r,num);
-
-        cuda_copy_depth_from_memory(buff_depth_);
     }
 }
 

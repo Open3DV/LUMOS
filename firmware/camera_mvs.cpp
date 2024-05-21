@@ -468,6 +468,9 @@ bool CameraMVS::openCameraBySN(std::string sn)
 
     std::cout << "setPixelFormat(12)" << std::endl;
 
+    // 设置帧率使能为Off
+    nRet = MV_CC_SetBoolValue(handle_, "AcquisitionFrameRateEnable", false);
+
     // get IInteger variable
     MVCC_INTVALUE stHeight = {0};
     nRet = MV_CC_GetIntValue(handle_, "Height", &stHeight);

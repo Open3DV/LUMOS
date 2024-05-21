@@ -4,36 +4,7 @@
 #include "../SDK/camera_status.h"
 #include "camera_param.h"
 
-struct FpgaRegSingle {
-	uint32_t reg;
-	uint32_t val;
-};
-
-struct BrightCtrl {
-	int Period;
-	int Phase_N;
-};
-
-struct FpgaRegSet {
-	struct FpgaRegSingle LaserCmd;
-	struct FpgaRegSingle LaserFreq;
-	struct FpgaRegSingle RunTime;
-	struct FpgaRegSingle OutPoint;
-	struct FpgaRegSingle BankSelect;
-	struct FpgaRegSingle InnerAddr;
-	struct FpgaRegSingle InnerData;
-	struct BrightCtrl Brightness[5];
-	struct FpgaRegSingle Trigger;
-	struct FpgaRegSingle LaserBrightness;
-	struct FpgaRegSingle LaserDarkness;
-	struct FpgaRegSingle LaserClosedCurrent;//����������ʱ�ĵ���
-};
-
 #define DF_PORT 8080
-// #define DFX_800 800
-// #define DFX_1800 1800
-#define DF_PROJECTOR_3010 3010
-#define DF_PROJECTOR_4710 4710
 
 #define DF_CMD_CONNECT 10000001
 #define DF_CMD_DISCONNECT 10000002

@@ -22,14 +22,16 @@ public:
 
     virtual bool project() = 0;
 
-    virtual bool setProjectorCurrent(int current) = 0;
+    virtual bool setProjectorCurrent(int current) = 0; // current的值从0-1023，0表示最暗，1023表示最亮
 
-    virtual bool setProjectorExposure(int exposure) = 0;
+    virtual bool setProjectorExposure(int exposure) = 0; // exposure的单位是us
 
     virtual bool setProjectorTriggerDlay(int dlay) = 0;
 
     virtual bool setProjectorWorkingMode(int mode) = 0;
 
     virtual bool getCorrectExposure(int& exposureTime) {return false;}
+
+    virtual bool setProjectorMinTriggerIntervalTime(int minTriggerInterval) {return false;};
 
 };

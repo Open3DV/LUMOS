@@ -5,11 +5,12 @@ set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS "-Wl,-rpath=./")
 #set(CMAKE_CUDA_ARCHITECTURES "50")
 
-project(DF8 CXX CUDA)
+project(LUMOS CXX CUDA)
 
 find_package(Threads)
-find_package(CUDA REQUIRED) 
-set(OPENCV_DIR /home/ainstec/lumos/3rdparty)
+find_package(CUDA REQUIRED)
+set(USER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../")
+set(OPENCV_DIR ${USER_DIR}/lumos/3rdparty)
 
 set(JETSON_MULTILIB_DIR /usr/src/jetson_multimedia_api/)
 set(CLASS_DIR ${JETSON_MULTILIB_DIR}/samples/common/classes)
@@ -47,6 +48,7 @@ include_directories(${OPENCV_DIR}/linux-opencv-4.4.0/modules/objdetect/include)
 include_directories(${OPENCV_DIR}/linux-opencv-4.4.0/modules/photo/include)
 include_directories(${OPENCV_DIR}/linux-opencv-4.4.0/modules/stitching/include)
 include_directories(${OPENCV_DIR}/linux-opencv-4.4.0/modules/video/include)
+include_directories(${OPENCV_DIR}/linux-opencv-4.4.0/include/opencv2)
 
 link_directories(/lib/${TEGRA_ARMABI})
 link_directories(/usr/lib/${TEGRA_ARMABI})
@@ -88,11 +90,15 @@ add_executable(camera_server
                     camera_mvs.cpp
                     scan3d.cpp
                     camera.cpp
-		        camera_mipi.cpp
+		            camera_mipi.cpp
                     merge_hdr.cu
                     projector_base.cpp
                     projector_ainstec.cpp
                     serial_function.cpp
+                    camera_mipi_virtual.cpp
+                    spi.cpp
+                    devmem.cpp
+                    projector_fpga.cpp
                     ${ARGUS_UTILS_DIR}/Thread.cpp
                     ${CLASS_DIR}/NvApplicationProfiler.cpp  ${CLASS_DIR}/NvElementProfiler.cpp  ${CLASS_DIR}/NvV4l2Element.cpp
                     ${CLASS_DIR}/NvBuffer.cpp               ${CLASS_DIR}/NvJpegDecoder.cpp      ${CLASS_DIR}/NvV4l2ElementPlane.cpp
