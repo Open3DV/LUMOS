@@ -73,12 +73,14 @@ int Scan3D::init()
     std::fstream sn_list;
     std::string sn_left;
     std::string sn_right;
+    std::string sn_center;
     sn_list.open("./camera_sn.txt", std::ios::in);
 
     if (sn_list.is_open())
     {
         sn_list >> sn_left;
         sn_list >> sn_right;
+        sn_list >> sn_center;
         sn_list.close();
     }
     else
@@ -90,7 +92,7 @@ int Scan3D::init()
         sn_list.close();
     }
 
-    LOG(INFO) << "camera list: \n" << "sn_left: " << sn_left << '\n' << "sn_right: " << sn_right;
+    LOG(INFO) << "read camera.txt list: \n" << "sn_left: " << sn_left << '\n' << "sn_right: " << sn_right << "sn_center: " << sn_center << "\n";
 
     if (camera_opened_flag_ == false)
     {
@@ -129,9 +131,12 @@ int Scan3D::init()
             camera_opened_flag_ = true;
         }
     }
-    camera_rgb_ = new CameraMIPI();
-    if (camera_rgb_->openCamera())
+    camera_rgb_ = new CameraMVS();
+    if (camera_rgb_->openCameraBySN(sn_center))
     {
+        camera_rgb_->switchToInternalTriggerMode();
+        camera_rgb_->setPixelFormat(24);
+        camera_rgb_->setExposureAuto(true);
         LOG(INFO) << "open rgb camera success!";
         if (!camera_rgb_->streamOn())
         {
@@ -142,6 +147,7 @@ int Scan3D::init()
         cv::Mat img_tepm(rgb_image_height_, rgb_image_width_, CV_8UC3);
         for (int i = 0; i < 10; i += 1)
         {
+            camera_rgb_->trigger_software();
             camera_rgb_->grap(img_tepm.data);
             // cv::imshow("test", img_tepm);
             // cv::waitKey(0);
@@ -880,7 +886,7 @@ bool Scan3D::captureRaw03(unsigned char* buff)
     
     if (camera_rgb_->streamOn())
     {
-        camera_rgb_->grap(buff + (36 * img_size));
+        camera_rgb_->trigger_software();
         camera_rgb_->grap(buff + (36 * img_size));
         camera_rgb_->streamOff();
     }
@@ -1260,7 +1266,7 @@ int Scan3D::captureFrame04()
     camera_left_->streamOff();
     camera_right_->streamOff();
 
-    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->trigger_software();
     camera_rgb_->grap(buff_color_brightness_);
     camera_rgb_->streamOff();
     
@@ -1438,7 +1444,7 @@ int Scan3D::captureFrame05()
     camera_left_->streamOff();
     camera_right_->streamOff();
 
-    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->trigger_software();
     camera_rgb_->grap(buff_color_brightness_);
     camera_rgb_->streamOff();
 
@@ -1500,7 +1506,7 @@ int Scan3D::captureColorBrightness()
     cuda_init_basic_memory();
     LOG(INFO) << "finish init basic memory";
 
-    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->trigger_software();
     camera_rgb_->grap(buff_color_brightness_);
     camera_rgb_->streamOff();
     LOG(INFO) << "Stream Off";
@@ -1650,7 +1656,7 @@ int Scan3D::captureFrame08()
     // }
     // else
     // {
-    //     camera_rgb_->grap(buff_color_brightness_);
+    //     camera_rgb_->trigger_software();
     //     camera_rgb_->grap(buff_color_brightness_);
     //     camera_rgb_->streamOff();
     // }
@@ -1983,7 +1989,7 @@ int Scan3D::captureFrame03()
     }
     else
     {
-        camera_rgb_->grap(buff_color_brightness_);
+        camera_rgb_->trigger_software();
         camera_rgb_->grap(buff_color_brightness_);
         camera_rgb_->streamOff();
     }
@@ -2458,7 +2464,7 @@ int Scan3D::captureFrame08Repetition(int repetition_count)
     }
     else
     {
-        camera_rgb_->grap(buff_color_brightness_);
+        camera_rgb_->trigger_software();
         camera_rgb_->grap(buff_color_brightness_);
         camera_rgb_->streamOff();
     }
@@ -2695,7 +2701,7 @@ int Scan3D::captureFrame04Repetition(int repetition_count)
     }
     else
     {
-        camera_rgb_->grap(buff_color_brightness_);
+        camera_rgb_->trigger_software();
         camera_rgb_->grap(buff_color_brightness_);
         camera_rgb_->streamOff();
     }

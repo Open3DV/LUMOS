@@ -23,6 +23,7 @@ public:
 
 	virtual bool getExposure(double &val){}; 
 	virtual bool setExposure(double val){}; 
+	virtual bool setExposureAuto(bool val){};
     
 	virtual bool getGain(double &val){};
 	virtual bool setGain(double val){};

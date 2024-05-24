@@ -31,6 +31,7 @@ public:
 
 	bool getExposure(double &val);
 	bool setExposure(double val);
+	bool setExposureAuto(bool val);
 
 	bool getGain(double &value);
 	bool setGain(double value);
