@@ -139,6 +139,12 @@ laser_3d_cam.exe --get-repetition-frame-01 --count 6 --ip 192.168.x.x --path ./f
 17.Get Repetition Frame 04: 获取一帧彩色模式的重复曝光数据\n\
 laser_3d_cam.exe --get-repetition-frame-04 --count 6 --ip 192.168.x.x --path ./frame04_repetition\n\
 \n\
+18.Get Frame dual rgb: 获取一帧双目原始数据及对应的视差图和深度图\n\
+laser_3d_cam.exe --get-frame-dual_rgb --ip 192.168.x.x --path ./frame_dual_rgb\n\
+\n\
+19.Get Frame dual rgb: 获取两张双目彩色数据\n\
+laser_3d_cam.exe --get-frame-rgbs --ip 192.168.x.x --path ./frame_rgbs\n\
+\n\
 ";
 
 void help_with_version(const char* help);
@@ -162,6 +168,8 @@ int on_dropped(void* param);
 int get_raw_01(const char* ip, const char* raw_image_dir);
 int get_raw_02(const char* ip, const char* raw_image_dir);
 int get_raw_03(const char* ip, const char* raw_image_dir);
+int get_frame_dual_rgb(const char* ip, const char* raw_image_dir);
+int get_frame_rgbs(const char* ip, const char* raw_image_dir);
 int get_calib_param(const char* ip, const char* calib_param_path);
 int set_calib_param(const char* ip, const char* calib_param_path);
 int set_generate_brightness_param(const char* ip, int model, float exposure);
@@ -193,6 +201,8 @@ enum opt_set
 	GET_FRAME_01,
 	GET_FRAME_01_HDR,
 	GET_FRAME_03,
+	GET_FRAME_DUAL_RGB,
+	GET_FRAME_RGBS,
 	GET_FRAME_01_REPETITION,
 	GET_FRAME_04_REPETITION,
 	GET_FRAME_04,
@@ -233,6 +243,8 @@ static struct option long_options[] =
 	{"get-raw-01",no_argument,NULL,GET_RAW_01},
 	{"get-raw-02",no_argument,NULL,GET_RAW_02},
 	{"get-raw-03",no_argument,NULL,GET_RAW_03},
+	{"get-frame-dual_rgb",no_argument,NULL,GET_FRAME_DUAL_RGB},
+	{"get-frame-rgbs",no_argument,NULL,GET_FRAME_RGBS},
 	{"get-frame-01",no_argument,NULL,GET_FRAME_01},
 	{"get-frame-01-hdr",no_argument,NULL,GET_FRAME_01_HDR},
 	{"get-repetition-frame-01",no_argument,NULL,GET_FRAME_01_REPETITION},
@@ -332,6 +344,12 @@ int main(int argc, char* argv[])
 		break;
 	case GET_RAW_03:
 		get_raw_03(camera_id, path);
+		break;
+	case GET_FRAME_DUAL_RGB:
+		get_frame_dual_rgb(camera_id, path);
+		break;
+	case GET_FRAME_RGBS:
+		get_frame_rgbs(camera_id, path);
 		break;
 	case GET_FRAME_01:
 		get_frame_01(camera_id, path);
@@ -708,7 +726,7 @@ bool convertDepthToRGBDepth(cv::Mat& depth_input, cv::Mat& depth_output, cv::Mat
 				if (depth_output.at<float>(rgb_v, rgb_u) < rgb_z)
 					depth_output.at<float>(rgb_v, rgb_u) = rgb_z;
 			}
-			
+
 		}
 	}
 
@@ -1073,7 +1091,7 @@ bool SaveBinPointsToPly(cv::Mat deep_mat, string path, cv::Mat texture_map)
 
 bool convertDepthToColor(cv::Mat& deep_mat, cv::Mat& color_texture_map, cv::Mat& depth2color_map, cv::Mat& output_color_depth)
 {
-	std:cout << "convertDepthToColor" << std::endl;
+std:cout << "convertDepthToColor" << std::endl;
 	output_color_depth = cv::Mat(deep_mat.size(), CV_8UC3);
 	for (int row = 0; row < deep_mat.rows; row += 1)
 	{
@@ -1085,7 +1103,7 @@ bool convertDepthToColor(cv::Mat& deep_mat, cv::Mat& color_texture_map, cv::Mat&
 				int rgb_v = depth2color_map.at<unsigned short>(row, 2 * col + 1);
 				if (rgb_u < color_texture_map.cols && rgb_u > 0 && rgb_v < color_texture_map.cols && rgb_v > 0)
 				{
-					output_color_depth.at<cv::Vec3b>(row, col) = 
+					output_color_depth.at<cv::Vec3b>(row, col) =
 						color_texture_map.at<cv::Vec3b>(rgb_v, rgb_u);
 				}
 
@@ -2102,8 +2120,89 @@ int get_raw_03(const char* ip, const char* raw_image_dir)
 	cv::Mat rgb_image(rgb_height, rgb_width, CV_8UC3, raw_buf + (image_size * capture_num));
 	//cv::imshow("rgb_image", rgb_image);
 	//cv::waitKey(0);
-	
+
 	cv::imwrite(fileName, rgb_image);
+
+	delete[] raw_buf;
+
+	DfDisconnectNet();
+	return 1;
+}
+
+int get_frame_dual_rgb(const char* ip, const char* raw_image_dir)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnectNet(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+	int width, height;
+	int rgb_width, rgb_height;
+
+	DfGetGrayCameraResolution(&width, &height);
+
+	int capture_num = 36;
+
+	int image_size = width * height;
+
+	size_t buf_size = image_size * capture_num * sizeof(unsigned short) + image_size * 3 * 2 + image_size * sizeof(float) * 2;
+
+	unsigned char* raw_buf = new unsigned char[buf_size];
+
+	ret = DfGetFrameDualRgb(raw_buf, buf_size);
+
+	save_images_16bit(raw_image_dir, (unsigned short*)raw_buf, width, height, capture_num);
+
+	std::string folderPath = raw_image_dir;
+	cv::Mat rgb_image_l(height, width, CV_8UC3, raw_buf + image_size * capture_num * sizeof(unsigned short));
+	cv::Mat rgb_image_r(height, width, CV_8UC3, raw_buf + image_size * capture_num * sizeof(unsigned short) + image_size * 3);
+	cv::Mat rectified_disparity(height, width, CV_32F, raw_buf + image_size * capture_num * sizeof(unsigned short) + image_size * 3 * 2);
+	cv::Mat rectified_depth(height, width, CV_32F, raw_buf + image_size * capture_num * sizeof(unsigned short) + image_size * 3 * 2 + image_size * sizeof(float));
+
+
+	cv::imwrite(folderPath + "/L_rectified.bmp", rgb_image_l);
+	cv::imwrite(folderPath + "/R_rectified.bmp", rgb_image_r);
+	cv::imwrite(folderPath + "/disparity_rectified.tiff", rectified_disparity);
+	cv::imwrite(folderPath + "/depth_rectified.tiff", rectified_depth);
+
+	delete[] raw_buf;
+
+	DfDisconnectNet();
+	return 1;
+}
+
+int get_frame_rgbs(const char* ip, const char* raw_image_dir)
+{
+	DfRegisterOnDropped(on_dropped);
+
+	int ret = DfConnectNet(ip);
+	if (ret == DF_FAILED)
+	{
+		return 0;
+	}
+
+	int width, height;
+	int rgb_width, rgb_height;
+
+	DfGetGrayCameraResolution(&width, &height);
+
+	int image_size = width * height;
+
+	size_t buf_size = image_size * 3 * 2;
+
+	unsigned char* raw_buf = new unsigned char[buf_size];
+
+	ret = DfGetFrameRgbs(raw_buf, buf_size);
+
+	std::string folderPath = raw_image_dir;
+	cv::Mat rgb_image_l(height, width, CV_8UC3, raw_buf);
+	cv::Mat rgb_image_r(height, width, CV_8UC3, raw_buf + image_size * 3);
+
+	cv::imwrite(folderPath + "/L_rectified.bmp", rgb_image_l);
+	cv::imwrite(folderPath + "/R_rectified.bmp", rgb_image_r);
 
 	delete[] raw_buf;
 
@@ -2364,7 +2463,7 @@ bool read_hdr_param_from_file(const char* param_path, int& hdr_count, int* expos
 	fs_in["hdr_count"] >> hdr_count;
 	fs_in["hdr_exposure_list"] >> exposure_list;
 	fs_in["hdr_brightness_list"] >> brightness_list;
-	
+
 	return true;
 }
 

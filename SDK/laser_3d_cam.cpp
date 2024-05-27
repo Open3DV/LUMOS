@@ -236,7 +236,7 @@ int depthTransformPointcloud(float* depth_map, float* point_cloud_map)
 		return DF_FAILED;
 	}
 
-//#pragma omp parallel for
+	//#pragma omp parallel for
 	for (int r = 0; r < nr; r++)
 	{
 		for (int c = 0; c < nc; c++)
@@ -1640,14 +1640,14 @@ DF_SDK_API int DfGetFrame04(float* depth, int depth_buf_size,
 		close_socket(g_sock);
 		return DF_BUSY;
 	}
-	
+
 	undistortRGBBrightnessMap(color_brightness);
 
 	resizeRGBImageToHalf(color_brightness, rgb_camera_width_, rgb_camera_height_, resize_color_brightness);
 
 	LOG(INFO) << "resizeRGBImageToHalf DONE";
 
-	float rgb_camera_intrinsic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	float rgb_camera_intrinsic[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	rgb_camera_intrinsic[0] = calibration_param_.rgb_camera_intrinsic[0] / 2.;
 	rgb_camera_intrinsic[2] = calibration_param_.rgb_camera_intrinsic[2] / 2.;
 	rgb_camera_intrinsic[4] = calibration_param_.rgb_camera_intrinsic[4] / 2.;
@@ -1748,7 +1748,7 @@ DF_SDK_API int DfGetFrame05(float* depth, int depth_buf_size,
 	close_socket(g_sock);
 	return DF_SUCCESS;
 }
-	
+
 DF_SDK_API int DfGetFrame04HDR(float* depth, int depth_buf_size,
 	unsigned char* brightness, int brightness_buf_size, unsigned char* color_brightness, int color_brightness_buf_size, unsigned char* resize_color_brightness, int resize_color_brightness_buf_size, float* resize_color_depth, int resize_color_depth_buf_size)
 {
@@ -1825,7 +1825,7 @@ DF_SDK_API int DfGetFrame04HDR(float* depth, int depth_buf_size,
 
 	LOG(INFO) << "resizeRGBImageToHalf DONE";
 
-	float rgb_camera_intrinsic[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	float rgb_camera_intrinsic[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	rgb_camera_intrinsic[0] = calibration_param_.rgb_camera_intrinsic[0] / 2.;
 	rgb_camera_intrinsic[2] = calibration_param_.rgb_camera_intrinsic[2] / 2.;
 	rgb_camera_intrinsic[4] = calibration_param_.rgb_camera_intrinsic[4] / 2.;
@@ -2199,6 +2199,117 @@ DF_SDK_API int DfGetCameraRawData03(unsigned char* raw, int raw_buf_size)
 			return DF_FAILED;
 		}
 		ret = send_command(DF_CMD_GET_RAW_03, g_sock);
+		ret = send_buffer((char*)&token, sizeof(token), g_sock);
+		int command;
+		ret = recv_command(&command, g_sock);
+		if (ret == DF_FAILED)
+		{
+			LOG(ERROR) << "Failed to recv command";
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		if (command == DF_CMD_OK)
+		{
+			LOG(INFO) << "token checked ok";
+			LOG(INFO) << "receiving buffer, raw_buf_size=" << raw_buf_size;
+			ret = recv_buffer((char*)raw, raw_buf_size, g_sock);
+			LOG(INFO) << "images received";
+			if (ret == DF_FAILED)
+			{
+				close_socket(g_sock);
+				return DF_FAILED;
+			}
+		}
+		else if (command == DF_CMD_REJECT)
+		{
+			LOG(INFO) << "Get raw rejected";
+			close_socket(g_sock);
+			return DF_BUSY;
+		}
+
+		LOG(INFO) << "Get raw success";
+		close_socket(g_sock);
+		return DF_SUCCESS;
+	}
+	return DF_FAILED;
+}
+
+DF_SDK_API int DfGetFrameDualRgb(unsigned char* raw, int raw_buf_size)
+{
+	int img_num = 36;
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+
+	if (raw)
+	{
+		LOG(INFO) << "DfGetFrameDualRgb";
+		assert(raw_buf_size == image_size_ * sizeof(unsigned short) * img_num + image_size_ * 3 * 2 + image_size_ * sizeof(float) * 2);
+		int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+		ret = send_command(DF_CMD_GET_FRAME_DUAL_RGB, g_sock);
+		ret = send_buffer((char*)&token, sizeof(token), g_sock);
+		int command;
+		ret = recv_command(&command, g_sock);
+		if (ret == DF_FAILED)
+		{
+			LOG(ERROR) << "Failed to recv command";
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+
+		if (command == DF_CMD_OK)
+		{
+			LOG(INFO) << "token checked ok";
+			LOG(INFO) << "receiving buffer, raw_buf_size=" << raw_buf_size;
+			ret = recv_buffer((char*)raw, raw_buf_size, g_sock);
+			LOG(INFO) << "images received";
+			if (ret == DF_FAILED)
+			{
+				close_socket(g_sock);
+				return DF_FAILED;
+			}
+		}
+		else if (command == DF_CMD_REJECT)
+		{
+			LOG(INFO) << "Get raw rejected";
+			close_socket(g_sock);
+			return DF_BUSY;
+		}
+
+		LOG(INFO) << "Get raw success";
+		close_socket(g_sock);
+		return DF_SUCCESS;
+	}
+	return DF_FAILED;
+}
+
+DF_SDK_API int DfGetFrameRgbs(unsigned char* raw, int raw_buf_size)
+{
+	std::unique_lock<std::timed_mutex> lck(command_mutex_, std::defer_lock);
+	while (!lck.try_lock_for(std::chrono::milliseconds(1)))
+	{
+		LOG(INFO) << "--";
+	}
+
+	if (raw)
+	{
+		LOG(INFO) << "DfGetFrameRgbs";
+		assert(raw_buf_size == image_size_ * 3 * 2);
+		int ret = setup_socket(camera_id_.c_str(), DF_PORT, g_sock);
+		if (ret == DF_FAILED)
+		{
+			close_socket(g_sock);
+			return DF_FAILED;
+		}
+		ret = send_command(DF_CMD_GET_FRAME_RGBS, g_sock);
 		ret = send_buffer((char*)&token, sizeof(token), g_sock);
 		int command;
 		ret = recv_command(&command, g_sock);
@@ -4443,7 +4554,7 @@ int firmwareVersionIsOlder(long long version_num, bool& firmware_is_older)
 	{
 		return DF_FAILED;
 	}
-	
+
 	std::string real_time = firmware_version_.substr(goal_pos + 1, 4) + firmware_version_.substr(goal_pos + 6, 2) + firmware_version_.substr(goal_pos + 9, 2) + firmware_version_.substr(goal_pos + 12, 2) + firmware_version_.substr(goal_pos + 15, 2) + firmware_version_.substr(goal_pos + 18, 2);
 	long long firmware_time = std::stoll(real_time);
 
