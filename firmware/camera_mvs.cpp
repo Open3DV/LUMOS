@@ -464,6 +464,34 @@ bool CameraMVS::openCameraBySN(std::string sn)
         return false;
     }
 
+    // 
+    nRet = MV_CC_SetIntValue(handle_, "AutoExposureTimeLowerLimit", 800);
+    if (MV_OK != nRet)
+    {
+        printf("set AutoExposureTimeLowerLimit time failed! nRet [%x]\n\n", nRet);
+        return false;
+    }
+    nRet = MV_CC_SetIntValue(handle_, "AutoExposureTimeUpperLimit", 500000);
+    if (MV_OK != nRet)
+    {
+        printf("set AutoExposureTimeupperLimit time failed! nRet [%x]\n\n", nRet);
+        return false;
+    }
+
+    // 
+    nRet = MV_CC_SetIntValue(handle_, "AutoExposureTimeLowerLimit", 800);
+    if (MV_OK != nRet)
+    {
+        printf("set AutoExposureTimeLowerLimit time failed! nRet [%x]\n\n", nRet);
+        return false;
+    }
+    nRet = MV_CC_SetIntValue(handle_, "AutoExposureTimeUpperLimit", 500000);
+    if (MV_OK != nRet)
+    {
+        printf("set AutoExposureTimeupperLimit time failed! nRet [%x]\n\n", nRet);
+        return false;
+    }
+
     setPixelFormat(12);
 
     std::cout << "setPixelFormat(12)" << std::endl;
@@ -537,6 +565,78 @@ bool CameraMVS::closeCamera()
     return false;
 }
 
+bool CameraMVS::setExposureAuto(bool val)
+{
+    if (val)
+    {
+        int nRet = MV_CC_SetEnumValue(handle_, "ExposureAuto", 2);
+        if (MV_OK != nRet)
+        {
+            printf("ExposureAuto fail! nRet [%x]\n", nRet);
+            return false;
+        }
+    }
+    else
+    {
+        int nRet = MV_CC_SetEnumValue(handle_, "ExposureAuto", 0);
+        if (MV_OK != nRet)
+        {
+            printf("close ExposureAuto fail! nRet [%x]\n", nRet);
+            return false;
+        }
+    }
+    return true;
+}
+
+
+bool CameraMVS::setExposureAuto(bool val)
+{
+    if (val)
+    {
+        int nRet = MV_CC_SetEnumValue(handle_, "ExposureAuto", 2);
+        if (MV_OK != nRet)
+        {
+            printf("ExposureAuto fail! nRet [%x]\n", nRet);
+            return false;
+        }
+    }
+    else
+    {
+        int nRet = MV_CC_SetEnumValue(handle_, "ExposureAuto", 0);
+        if (MV_OK != nRet)
+        {
+            printf("close ExposureAuto fail! nRet [%x]\n", nRet);
+            return false;
+        }
+    }
+    return true;
+}
+
+
+bool CameraMVS::setExposureAuto(bool val)
+{
+    if (val)
+    {
+        int nRet = MV_CC_SetEnumValue(handle_, "ExposureAuto", 2);
+        if (MV_OK != nRet)
+        {
+            printf("ExposureAuto fail! nRet [%x]\n", nRet);
+            return false;
+        }
+    }
+    else
+    {
+        int nRet = MV_CC_SetEnumValue(handle_, "ExposureAuto", 0);
+        if (MV_OK != nRet)
+        {
+            printf("close ExposureAuto fail! nRet [%x]\n", nRet);
+            return false;
+        }
+    }
+    return true;
+}
+
+
 bool CameraMVS::streamOn()
 {
     int i = 0;
@@ -570,10 +670,10 @@ bool CameraMVS::grap(unsigned char *buf)
 
     printf(("camera " + camera_sn_ + " captured!\n").c_str());
 
-    nRet = MV_CC_GetOneFrameTimeout(handle_, pData_, nDataSize_, &stImageInfo_, 1000);
+    nRet = MV_CC_GetOneFrameTimeout(handle_, buf, nDataSize_, &stImageInfo_, 1000);
     if (nRet == MV_OK)
     {
-        memcpy(buf, pData_, stImageInfo_.nHeight * stImageInfo_.nWidth);
+        // memcpy(buf, pData_, stImageInfo_.nHeight * stImageInfo_.nWidth);
     }
     else
     {
@@ -593,10 +693,10 @@ bool CameraMVS::grap(unsigned short* buf)
 
     std::cout << "nDataSize_: " << nDataSize_ << std::endl;
 
-    nRet = MV_CC_GetOneFrameTimeout(handle_, pData_, nDataSize_, &stImageInfo_, 1000);
+    nRet = MV_CC_GetOneFrameTimeout(handle_, (unsigned char*)buf, nDataSize_, &stImageInfo_, 1000);
     if (nRet == MV_OK)
     {
-        memcpy(buf, pData_, nDataSize_);
+        // memcpy(buf, pData_, nDataSize_);
     }
     else
     {
@@ -642,6 +742,14 @@ bool CameraMVS::setPixelFormat(int val)
             return false;
         }
         break;   
+    case 24:
+    nRet = MV_CC_SetEnumValue(handle_, "PixelFormat", MvGvspPixelType::PixelType_Gvsp_BGR8_Packed);
+    if (MV_OK != nRet)
+    {
+        printf("Set Pixel Format fail! nRet [0x%x]\n", nRet);
+        return false;
+    }
+    break;   
 
     default:
         break;

@@ -59,7 +59,7 @@ int Scan3D::init()
     result_e = cudaStreamCreate(&stream4_);
     int ret = 0;
     //激光振镜初始化
-    projector_ = new AinstecProjector;
+    projector_ = new FpgaProjector;
     ret = projector_->init();
     //projector_->setProjectorWorkingMode(0);
 
@@ -73,12 +73,14 @@ int Scan3D::init()
     std::fstream sn_list;
     std::string sn_left;
     std::string sn_right;
+    std::string sn_center;
     sn_list.open("./camera_sn.txt", std::ios::in);
 
     if (sn_list.is_open())
     {
         sn_list >> sn_left;
         sn_list >> sn_right;
+        sn_list >> sn_center;
         sn_list.close();
     }
     else
@@ -90,20 +92,20 @@ int Scan3D::init()
         sn_list.close();
     }
 
-    LOG(INFO) << "camera list: \n" << "sn_left: " << sn_left << '\n' << "sn_right: " << sn_right;
+    LOG(INFO) << "read camera.txt list: \n" << "sn_left: " << sn_left << '\n' << "sn_right: " << sn_right << "sn_center: " << sn_center << "\n";
 
     if (camera_opened_flag_ == false)
     {
-        LOG(INFO) << "Open MVS Camera:";
+        LOG(INFO) << "Open Camera:";
         camera_left_ = new CameraMVS();
         camera_right_ = new CameraMVS();
         if (!camera_left_->openCameraBySN(sn_left))
         {
-            LOG(INFO) << "Open Left MVS Camera Error!";
+            LOG(INFO) << "Open Left Camera Error!";
             camera_opened_flag_ = false;
             if (!camera_right_->openCameraBySN(sn_right))
             {
-                LOG(INFO) << "Open Right MVS Camera Error!";
+                LOG(INFO) << "Open Right Camera Error!";
                 camera_opened_flag_ = false;
             }
 
@@ -116,7 +118,7 @@ int Scan3D::init()
         }
         else if (!camera_right_->openCameraBySN(sn_right))
         {
-            LOG(INFO) << "Open Right MVS Camera Error!";
+            LOG(INFO) << "Open Right Camera Error!";
             camera_opened_flag_ = false;
 
             delete camera_left_;
@@ -125,13 +127,16 @@ int Scan3D::init()
         }
         else
         {
-            LOG(INFO) << "Open MVS Camera:";
+            LOG(INFO) << "Open Camera:";
             camera_opened_flag_ = true;
         }
     }
-    camera_rgb_ = new CameraMIPI();
-    if (camera_rgb_->openCamera())
+    camera_rgb_ = new CameraMVS();
+    if (camera_rgb_->openCameraBySN(sn_center))
     {
+        camera_rgb_->switchToInternalTriggerMode();
+        camera_rgb_->setPixelFormat(24);
+        camera_rgb_->setExposureAuto(true);
         LOG(INFO) << "open rgb camera success!";
         if (!camera_rgb_->streamOn())
         {
@@ -142,6 +147,7 @@ int Scan3D::init()
         cv::Mat img_tepm(rgb_image_height_, rgb_image_width_, CV_8UC3);
         for (int i = 0; i < 10; i += 1)
         {
+            camera_rgb_->trigger_software();
             camera_rgb_->grap(img_tepm.data);
             // cv::imshow("test", img_tepm);
             // cv::waitKey(0);
@@ -313,7 +319,7 @@ int Scan3D::init()
     cv::Mat weight_map;
 
     cv::stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, cv::Size(image_width_, image_height_), RR, 
-        T, Rl, Rr, Pl, Pr, Q, /*cv::CALIB_ZERO_DISPARITY*/0, 0, cv::Size(image_width_, image_height_), &roi1, &roi2);
+        T, Rl, Rr, Pl, Pr, Q, /*cv::CALIB_ZERO_DISPARITY*/0, -1, cv::Size(image_width_, image_height_), &roi1, &roi2);
 
     cv::initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pl, cv::Size(image_width_, image_height_), CV_16SC2, mapL1, mapL2);
 	cv::initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, cv::Size(image_width_, image_height_), CV_16SC2, mapR1, mapR2);
@@ -880,7 +886,7 @@ bool Scan3D::captureRaw03(unsigned char* buff)
     
     if (camera_rgb_->streamOn())
     {
-        camera_rgb_->grap(buff + (36 * img_size));
+        camera_rgb_->trigger_software();
         camera_rgb_->grap(buff + (36 * img_size));
         camera_rgb_->streamOff();
     }
@@ -1143,14 +1149,14 @@ int Scan3D::captureFrame04()
     LOG(INFO) << "Stream On:";
     if (!camera_left_->streamOn())
     {
-        LOG(INFO) << "Stream On Error";
+        LOG(INFO) << "camera_left Stream On Error";
         camera_left_->streamOff();
         camera_right_->streamOff();
         return DF_ERROR_CAMERA_STREAM;
     }
     if (!camera_right_->streamOn())
     {
-        LOG(INFO) << "Stream On Error";
+        LOG(INFO) << "camera_right Stream On Error";
         camera_left_->streamOff();
         camera_right_->streamOff();
         return DF_ERROR_CAMERA_STREAM;
@@ -1260,7 +1266,7 @@ int Scan3D::captureFrame04()
     camera_left_->streamOff();
     camera_right_->streamOff();
 
-    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->trigger_software();
     camera_rgb_->grap(buff_color_brightness_);
     camera_rgb_->streamOff();
     
@@ -1321,14 +1327,14 @@ int Scan3D::captureFrame05()
     LOG(INFO) << "Stream On:";
     if (!camera_left_->streamOn())
     {
-        LOG(INFO) << "Stream On Error";
+        LOG(INFO) << "camera_left Stream On Error";
         camera_left_->streamOff();
         camera_right_->streamOff();
         return DF_ERROR_CAMERA_STREAM;
     }
     if (!camera_right_->streamOn())
     {
-        LOG(INFO) << "Stream On Error";
+        LOG(INFO) << "camera_right Stream On Error";
         camera_left_->streamOff();
         camera_right_->streamOff();
         return DF_ERROR_CAMERA_STREAM;
@@ -1438,7 +1444,7 @@ int Scan3D::captureFrame05()
     camera_left_->streamOff();
     camera_right_->streamOff();
 
-    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->trigger_software();
     camera_rgb_->grap(buff_color_brightness_);
     camera_rgb_->streamOff();
 
@@ -1500,7 +1506,7 @@ int Scan3D::captureColorBrightness()
     cuda_init_basic_memory();
     LOG(INFO) << "finish init basic memory";
 
-    camera_rgb_->grap(buff_color_brightness_);
+    camera_rgb_->trigger_software();
     camera_rgb_->grap(buff_color_brightness_);
     camera_rgb_->streamOff();
     LOG(INFO) << "Stream Off";
@@ -1513,7 +1519,6 @@ int Scan3D::captureColorBrightness()
 
     return DF_SUCCESS;
 }
-
 
 int Scan3D::captureFrame08()
 {
@@ -1578,7 +1583,6 @@ int Scan3D::captureFrame08()
         {
             camera_left_->streamOff();
             camera_right_->streamOff();
-            
             return DF_ERROR_CAMERA_GRAP;
         }
 
@@ -1652,7 +1656,7 @@ int Scan3D::captureFrame08()
     // }
     // else
     // {
-    //     camera_rgb_->grap(buff_color_brightness_);
+    //     camera_rgb_->trigger_software();
     //     camera_rgb_->grap(buff_color_brightness_);
     //     camera_rgb_->streamOff();
     // }
@@ -1985,7 +1989,7 @@ int Scan3D::captureFrame03()
     }
     else
     {
-        camera_rgb_->grap(buff_color_brightness_);
+        camera_rgb_->trigger_software();
         camera_rgb_->grap(buff_color_brightness_);
         camera_rgb_->streamOff();
     }
@@ -2462,7 +2466,7 @@ int Scan3D::captureFrame08Repetition(int repetition_count)
     }
     else
     {
-        camera_rgb_->grap(buff_color_brightness_);
+        camera_rgb_->trigger_software();
         camera_rgb_->grap(buff_color_brightness_);
         camera_rgb_->streamOff();
     }
@@ -2699,7 +2703,7 @@ int Scan3D::captureFrame04Repetition(int repetition_count)
     }
     else
     {
-        camera_rgb_->grap(buff_color_brightness_);
+        camera_rgb_->trigger_software();
         camera_rgb_->grap(buff_color_brightness_);
         camera_rgb_->streamOff();
     }
