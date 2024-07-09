@@ -142,7 +142,7 @@ __global__ void kernel_8_step_phase_shift_16bit(int width, int height, unsigned 
 	{
 		int over_num = 0;
 
-		over_num = (d_in_0[offset] >= 4085) + (d_in_1[offset] >= 4085) + (d_in_2[offset] >= 4085) + (d_in_3[offset] >= 4085);
+		over_num = (d_in_0[offset] >= 4080) + (d_in_1[offset] >= 4080) + (d_in_2[offset] >= 4080) + (d_in_3[offset] >= 4080)+ (d_in_4[offset] >= 4080)+ (d_in_5[offset] >= 4080)+ (d_in_6[offset] >= 4080)+ (d_in_7[offset] >= 4080);
 
 
 
@@ -180,7 +180,7 @@ __global__ void kernel_8_step_phase_shift_16bit(int width, int height, unsigned 
 
 		d_out[offset] = (CV_PI - atan2(a, b)) * 40.7436654315252f * (r >= d_in_confidence) * (over_num < 2);
 		d_in_3[offset] = d_out[offset];
-		mask_noise[offset] = 255 * ((over_num > 4) || (r < d_in_confidence));
+		mask_noise[offset] = 255 * ((over_num > 1) || (r < d_in_confidence));
 
 	}
 }
@@ -561,6 +561,12 @@ __global__ void kernel_matching_(int width, int height, unsigned short* d_in_sor
 	}
 }
 
+
+//d_in_sorted_pixels_left: 左目的像素的x坐标，根据code排序的，可以输入code查询
+// d_in_unwrap_phase_left：原始的解包裹结果
+// d_in_num_of_pixels_left：记录了每一个code所对应的数量大小
+// d_in_index_of_pixels_left：就是每一个code的起始X坐标
+#define CODE_MATCHING_TOLERANCE 200 // 即5个像素的余量
 __global__ void kernel_matching(int width, int height, unsigned short* d_in_sorted_pixels_left, unsigned short* d_in_unwrap_phase_left, unsigned short* d_in_num_of_pixels_left, unsigned short* d_in_index_of_pixels_left, unsigned short* d_in_sorted_pixels_right, unsigned short* d_in_unwrap_phase_right, unsigned short* d_in_num_of_pixels_right, unsigned short* d_in_index_of_pixels_right, float* disparty, unsigned char* disparty_mask)
 {
 	// 核函数的并行是基于图像高 * 256来及进行循环
@@ -581,6 +587,9 @@ __global__ void kernel_matching(int width, int height, unsigned short* d_in_sort
 		float right_phase;
 
 		// 主要是需要处理右侧的点，右侧的点朝左、朝右要扩展；
+		// 不允许右目存在独立的像素，右目的独立像素应当是可以插值到左侧？
+		// 先实现简单的，那就是先能够将左目直接插进右目的像素之间即可，需要避免右目的点位于边缘位置
+		// 也就是说在原有的基础上向左右扩充即可
 		int num_left = d_in_num_of_pixels_left[offset];
 		if (num_left > 30)
 		{
@@ -595,10 +604,16 @@ __global__ void kernel_matching(int width, int height, unsigned short* d_in_sort
 			num_right = 30 - more_num * 2;
 		}
 		// 拷贝数据到本地的数组：相位、x坐标
+		// 可以考虑新增一个confidencemap
 		unsigned short left_phase_list[30];
 		unsigned short right_phase_list[30];
 		unsigned short left_x_list[30];
 		unsigned short right_x_list[30];
+		unsigned short match_uncertainty[30];
+		for (int i = 0; i < 30; i += 1)
+		{
+			match_uncertainty[i] = 10000;
+		}
 
 		
 
@@ -612,92 +627,128 @@ __global__ void kernel_matching(int width, int height, unsigned short* d_in_sort
 		// {
 			
 		// } 
-		right_x_list[0] = d_in_sorted_pixels_right[offset_img + d_in_index_of_pixels_right[offset]] - 1;
+		// right_x_list[0] = d_in_sorted_pixels_right[offset_img + d_in_index_of_pixels_right[offset]] - 1;
 
-		if (right_x_list[0] < 1)
+		// if (right_x_list[0] < 1)
+		// {
+		// 	right_x_list[0] = 1;
+		// }
+
+		// right_phase_list[0] = d_in_unwrap_phase_right[offset_img + right_x_list[0]];
+
+		// for (int i = 0; i < num_right; i += 1)
+		// {
+		// 	right_x_list[i + 1] = d_in_sorted_pixels_right[offset_img + d_in_index_of_pixels_right[offset] + i];
+		// 	right_phase_list[i + 1] = d_in_unwrap_phase_right[offset_img + right_x_list[i + 1]];
+		// }
+
+		// right_x_list[num_right + 1] = right_x_list[num_right] + 1;
+
+		// if (right_x_list[num_right + 1] > width - 2)
+		// {
+		// 	right_x_list[num_right + 1] = width - 1;
+		// }
+
+		// right_phase_list[num_right + 1] = d_in_unwrap_phase_right[offset_img + right_x_list[num_right + 1]];
+
+		/*********************************重新获取右目的code**************************************/
+		short x_before, x_now, x_next, x_index;
+		x_before = -1;
+		x_now = 0;
+		x_next = d_in_sorted_pixels_right[offset_img + d_in_index_of_pixels_right[offset]];
+		x_index = 0;
+
+		for (int i = 0; i < num_right - 1 && x_index < 30; i += 1) // i是右目中的code的数量，是总共的循环次数，x_index是当前的序号
 		{
-			right_x_list[0] = 1;
+			x_now = x_next;
+			x_next = d_in_sorted_pixels_right[offset_img + d_in_index_of_pixels_right[offset] + i + 1];
+			if (x_now - 1 == x_before && x_index < 30) // 若当前的x与之前的X是相等的
+			{
+				right_x_list[x_index] = x_now;
+				right_phase_list[x_index] = d_in_unwrap_phase_right[offset_img + x_now];
+				x_index += 1;
+			}
+			else if (x_index < 30 - 1) // 因为x_now == 0时不会出现异常故无需判断
+			{
+				right_x_list[x_index] = x_now - 1;
+				right_x_list[x_index + 1] = x_now;
+				right_phase_list[x_index] = d_in_unwrap_phase_right[offset_img + x_now - 1];
+				right_phase_list[x_index + 1] = d_in_unwrap_phase_right[offset_img + x_now];
+				x_index += 2;
+			}
+			x_before = x_now;
+			if (x_now + 1 != x_next && x_index < 30) // x_now不能
+			{
+				right_x_list[x_index] = x_now + 1;
+				right_phase_list[x_index] = d_in_unwrap_phase_right[offset_img + x_now + 1];
+				x_index += 1;
+				x_before = x_now + 1;
+			}
 		}
-
-		right_phase_list[0] = d_in_unwrap_phase_right[offset_img + right_x_list[0]];
-
-		for (int i = 0; i < num_right; i += 1)
+		right_x_list[x_index] = x_next;
+		right_phase_list[x_index] = d_in_unwrap_phase_right[offset_img + x_next];
+		x_index += 1;
+		// 边界位置处理判断
+		if (right_x_list[x_index - 1] < width - 1 && x_index < 30)
 		{
-			right_x_list[i + 1] = d_in_sorted_pixels_right[offset_img + d_in_index_of_pixels_right[offset] + i];
-			right_phase_list[i + 1] = d_in_unwrap_phase_right[offset_img + right_x_list[i + 1]];
+			right_x_list[x_index] = right_x_list[x_index - 1] + 1;
+			right_phase_list[x_index] = d_in_unwrap_phase_right[offset_img + right_x_list[x_index]];
+			x_index += 1;
 		}
+		/***********************************************************************/
 
-		right_x_list[num_right + 1] = right_x_list[num_right] + 1;
 
-		if (right_x_list[num_right + 1] > width - 2)
-		{
-			right_x_list[num_right + 1] = width - 1;
-		}
-
-		right_phase_list[num_right + 1] = d_in_unwrap_phase_right[offset_img + right_x_list[num_right + 1]];
 
 		int left_x;
 		int right_x_1;
 		int right_x;
-
+		int min_uncertainty = 100000;
+		// 可以避免数组的随机访问来对函数加速
 		int j = 1;
 		for (int i = 0; i < num_left; i += 1)
 		{
 			left_x = left_x_list[i];
 			left_phase = left_phase_list[i];
-
-			for (j = 1; j < num_right + 2; j += 1)
+			min_uncertainty = 100000;
+			for (j = 1; j < x_index; j += 1)
+			// for (j = 1; j < num_left + 2; j += 1)
 			{
 				right_x_1 = right_x_list[j - 1];
 				right_x = right_x_list[j];
 				right_phase_1 = right_phase_list[j - 1];
 				right_phase = right_phase_list[j];
 
-				if (left_phase <= right_phase && left_phase >= right_phase_1 || left_phase == right_phase || left_phase == right_phase_1)
+				if (left_phase <= right_phase && left_phase >= right_phase_1) // 大小不一定和顺序有关，需要
 				{
-					disparty[offset_img + left_x] = left_x - (right_x_1 + (left_phase - right_phase_1) / (right_phase - right_phase_1) * (right_x - right_x_1));
-					disparty_mask[offset_img + left_x] = 255;
+					int uncertainty_now = right_phase - right_phase_1;
+					if (uncertainty_now < min_uncertainty)
+					{
+						min_uncertainty = uncertainty_now;
+						disparty[offset_img + left_x] = left_x - (right_x_1 + (left_phase - right_phase_1) / (right_phase - right_phase_1) * (right_x - right_x_1));
+						disparty_mask[offset_img + left_x] = 255;
+					}
 					break;
 				}
+				else if (right_phase_1 == right_phase && left_phase == right_phase)
+				{
+					min_uncertainty = 0;
+					disparty[offset_img + left_x] = left_x - (right_x_1 + 0.5);
+					disparty_mask[offset_img + left_x] = 255;
+				}
+				// else if (left_phase >= right_phase && left_phase <= right_phase_1)
+				// {
+				// 	// 	如何确认这个匹配的可靠性？没有匹配上是什么原因？
+				// 	int uncertainty_now = right_phase_1 - right_phase;
+				// 	if (uncertainty_now < min_uncertainty)
+				// 	{
+				// 		min_uncertainty = uncertainty_now;
+				// 		disparty[offset_img + left_x] = left_x - (right_x - (left_phase - right_phase) / (right_phase_1 - right_phase) * (right_x - right_x_1));
+				// 		disparty_mask[offset_img + left_x] = 255;
+				// 	}
+
+				// }
 			}
 		}
-
-		// 新增判断，识别缝隙
-
-		// left_x = d_in_sorted_pixels_left[offset_img + d_in_index_of_pixels_left[offset]];
-		// right_x = d_in_sorted_pixels_right[offset_img + d_in_index_of_pixels_right[offset]];
-
-
-
-
-		// if (right_x > 0)
-		// {
-		// 	right_phase_1 = d_in_unwrap_phase_right[offset_img + right_x - 1];
-		// 	right_phase = d_in_unwrap_phase_right[offset_img + right_x];
-		// 	left_phase = d_in_unwrap_phase_left[offset_img + left_x];
-		// 	if (left_phase > right_phase_1 && left_phase < right_phase && right_phase - right_phase_1 < 256)
-		// 	{
-		// 		disparty[offset_img + left_x] = left_x - (right_x - 1 + (left_phase - right_phase_1) / (right_phase - right_phase_1));
-		// 		disparty_mask[offset_img + left_x] = 255;
-		// 	}
-		// }
-
-		// left_x = d_in_sorted_pixels_left[offset_img + d_in_index_of_pixels_left[offset] + num_left - 1];
-		// right_x = d_in_sorted_pixels_right[offset_img + d_in_index_of_pixels_right[offset] + num_right - 1];
-
-		// if (right_x + 1 < width)
-		// {
-		// 	right_phase_1 = d_in_unwrap_phase_right[offset_img + right_x + 1];//右1
-		// 	right_phase = d_in_unwrap_phase_right[offset_img + right_x];
-		// 	left_phase = d_in_unwrap_phase_left[offset_img + left_x];
-		// 	if (left_phase < right_phase_1 && left_phase > right_phase && right_phase_1 - right_phase < 255)
-		// 	{
-
-		// 		disparty[offset_img + left_x] = left_x - (right_x + (left_phase - right_phase) / (right_phase_1 - right_phase));
-		// 		disparty_mask[offset_img + left_x] = 255;
-
-		// 	}
-		// }
 
 	}
 }
