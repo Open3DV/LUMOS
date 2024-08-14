@@ -1,5 +1,5 @@
 #include "camera_mvs.h"
-
+#include <unistd.h>
 
 bool PrintDeviceInfo(MV_CC_DEVICE_INFO* pstMVDevInfo)
 {
@@ -33,6 +33,9 @@ bool PrintDeviceInfo(MV_CC_DEVICE_INFO* pstMVDevInfo)
 
 CameraMVS::CameraMVS()
 {
+    exposure_time_now_ = -1;
+    pixel_type_now_ = -1;
+    gain_now_ = -1;
     pData_ = NULL;
     nDataSize_ = 0;
     camera_sn_ = "";
@@ -398,7 +401,7 @@ bool CameraMVS::openCameraBySN(std::string sn)
 
     std::cout << "open cam use sn: " << sn << std::endl;
 
-    int openNum = 0;
+    int openNum = -1;
     if (stDeviceList.nDeviceNum > 0)
     {
         for (int i = 0; i < stDeviceList.nDeviceNum; i++)
@@ -424,6 +427,11 @@ bool CameraMVS::openCameraBySN(std::string sn)
         printf("Find No Devices!\n"); 
         return false;
     }
+    if (openNum == -1)
+    {
+        std::cout << "无此设备: " << sn << std::endl;
+        return false;
+    }
 
     // 选择设备并创建句柄
     // select device and create handle
@@ -445,7 +453,7 @@ bool CameraMVS::openCameraBySN(std::string sn)
  
         return false;
     }
-
+    MV_CC_SetImageNodeNum(handle_, 18);
     // 设置触发模式为off
     // set trigger mode as on
     nRet = MV_CC_SetEnumValue(handle_, "TriggerMode", 1);
@@ -461,20 +469,6 @@ bool CameraMVS::openCameraBySN(std::string sn)
     if (MV_OK != nRet)
     {
         printf("MV_CC_SetTriggerSource fail! nRet [%x]\n", nRet);
-        return false;
-    }
-
-    // 
-    nRet = MV_CC_SetIntValue(handle_, "AutoExposureTimeLowerLimit", 800);
-    if (MV_OK != nRet)
-    {
-        printf("set AutoExposureTimeLowerLimit time failed! nRet [%x]\n\n", nRet);
-        return false;
-    }
-    nRet = MV_CC_SetIntValue(handle_, "AutoExposureTimeUpperLimit", 500000);
-    if (MV_OK != nRet)
-    {
-        printf("set AutoExposureTimeupperLimit time failed! nRet [%x]\n\n", nRet);
         return false;
     }
 
@@ -547,6 +541,7 @@ bool CameraMVS::closeCamera()
     int nRet = MV_OK;
     // 关闭设备
     // close device
+    std::cout << "关闭设备SN: " << camera_sn_ << std::endl;
     nRet = MV_CC_CloseDevice(handle_);
     if (MV_OK != nRet)
     {
@@ -562,7 +557,9 @@ bool CameraMVS::closeCamera()
         return false;
     }
 
-    return false;
+    handle_ = NULL;
+
+    return true;
 }
 
 bool CameraMVS::setExposureAuto(bool val)
@@ -587,76 +584,13 @@ bool CameraMVS::setExposureAuto(bool val)
     }
     return true;
 }
-
-
-bool CameraMVS::setExposureAuto(bool val)
-{
-    if (val)
-    {
-        int nRet = MV_CC_SetEnumValue(handle_, "ExposureAuto", 2);
-        if (MV_OK != nRet)
-        {
-            printf("ExposureAuto fail! nRet [%x]\n", nRet);
-            return false;
-        }
-    }
-    else
-    {
-        int nRet = MV_CC_SetEnumValue(handle_, "ExposureAuto", 0);
-        if (MV_OK != nRet)
-        {
-            printf("close ExposureAuto fail! nRet [%x]\n", nRet);
-            return false;
-        }
-    }
-    return true;
-}
-
-
-bool CameraMVS::setExposureAuto(bool val)
-{
-    if (val)
-    {
-        int nRet = MV_CC_SetEnumValue(handle_, "ExposureAuto", 2);
-        if (MV_OK != nRet)
-        {
-            printf("ExposureAuto fail! nRet [%x]\n", nRet);
-            return false;
-        }
-    }
-    else
-    {
-        int nRet = MV_CC_SetEnumValue(handle_, "ExposureAuto", 0);
-        if (MV_OK != nRet)
-        {
-            printf("close ExposureAuto fail! nRet [%x]\n", nRet);
-            return false;
-        }
-    }
-    return true;
-}
-
 
 bool CameraMVS::streamOn()
 {
     int i = 0;
     int nRet = MV_OK;
-
-    printf("stream on");
-
-    while(1)
-    {
-        nRet = MV_CC_GetOneFrameTimeout(handle_, pData_, nDataSize_, &stImageInfo_, 0);
-        if (nRet != MV_OK)
-        {
-            std::cout << "noise iamges: " << i << std::endl;
-            return true;
-        }
-        else
-        {
-            i += 1;
-        }
-    }
+    MV_CC_ClearImageBuffer(handle_);
+    return true;
 }
 
 bool CameraMVS::streamOff()
@@ -670,15 +604,24 @@ bool CameraMVS::grap(unsigned char *buf)
 
     printf(("camera " + camera_sn_ + " captured!\n").c_str());
 
-    nRet = MV_CC_GetOneFrameTimeout(handle_, buf, nDataSize_, &stImageInfo_, 1000);
+    // 使用高性能的方式进行取图
+    MV_FRAME_OUT stOutFrame = {0};
+
+    nRet = MV_CC_GetImageBuffer(handle_, &stOutFrame, 1000);
     if (nRet == MV_OK)
     {
-        // memcpy(buf, pData_, stImageInfo_.nHeight * stImageInfo_.nWidth);
+        printf("Get Image Buffer: Width[%d], Height[%d], FrameNum[%d]\n",
+            stOutFrame.stFrameInfo.nWidth, stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nFrameNum);
+        memcpy(buf, stOutFrame.pBufAddr, stOutFrame.stFrameInfo.nFrameLen);
+        nRet = MV_CC_FreeImageBuffer(handle_, &stOutFrame);
+        if(nRet != MV_OK)
+        {
+            printf("Free Image Buffer fail! nRet [0x%x]\n", nRet);
+        }
     }
     else
     {
-        printf("No data[%x]\n", nRet);
-
+        printf("Get Image fail! nRet [0x%x]\n", nRet);
         return false;
     }
 
@@ -690,18 +633,20 @@ bool CameraMVS::grap(unsigned short* buf)
     int nRet = MV_OK;
 
     printf(("camera " + camera_sn_ + " captured!\n").c_str());
-
-    std::cout << "nDataSize_: " << nDataSize_ << std::endl;
-
-    nRet = MV_CC_GetOneFrameTimeout(handle_, (unsigned char*)buf, nDataSize_, &stImageInfo_, 1000);
+    
+    // 使用高性能的方式进行取图
+    MV_FRAME_OUT stOutFrame = {0};
+    nRet = MV_CC_GetImageBuffer(handle_, &stOutFrame, 1000);
     if (nRet == MV_OK)
     {
-        // memcpy(buf, pData_, nDataSize_);
+        printf("Get Image Buffer: Width[%d], Height[%d], FrameNum[%d]\n",
+            stOutFrame.stFrameInfo.nWidth, stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nFrameNum);
+        memcpy(buf, stOutFrame.pBufAddr, stOutFrame.stFrameInfo.nFrameLen);
+        nRet = MV_CC_FreeImageBuffer(handle_, &stOutFrame);
     }
     else
     {
-        printf("No data[%x]\n", nRet);
-
+        printf("Get Image fail! nRet [0x%x]\n", nRet);
         return false;
     }
 
@@ -718,7 +663,6 @@ bool CameraMVS::setPixelFormat(int val)
         if (nRet != MV_OK)
         {
             printf("Stop Grabbing fail! nRet [0x%x]\n", nRet);
-            return false;
         }
         camera_is_opened_ = false;
     }
@@ -816,7 +760,7 @@ bool CameraMVS::setPixelFormat(int val)
         }
     }
 
-
+    pixel_type_now_ = val;
     return true;
 }
 
@@ -903,7 +847,7 @@ bool CameraMVS::setExposure(double val)
         printf("set exposure time failed! nRet [%x]\n\n", nRet);
         return false;
         }
-
+        exposure_time_now_ = val;
         return true;
 }
 
@@ -937,6 +881,55 @@ bool CameraMVS::setGain(double value)
     return true;
  
 }
+
+bool CameraMVS::rebootCamera()
+{
+    // 重启相机失败，return false
+
+    // 1. 断开相机
+    if (handle_ != NULL)
+    {
+        closeCamera();
+    }
+    camera_is_opened_ = false;
+    // 记录相机当前状态
+    int before_exposure = exposure_time_now_;
+    int before_pixel_type = pixel_type_now_;
+    int before_gain = gain_now_;
+    std::string before_camera_sn = camera_sn_;
+    // 2. 连接相机
+    for (int i = 0; i < 5; i += 1)
+    {
+        std::cout << "重启2D相机中: " << i << std::endl;
+        sleep(2);
+        if (openCameraBySN(before_camera_sn))
+        {
+            if (before_exposure > 0)
+            {
+                std::cout << "设置曝光时间为：" << before_exposure << std::endl;
+                setExposure(before_exposure);
+            }
+            if (before_pixel_type > 0)
+            {
+                std::cout << "设置before_pixel_type为：" << before_pixel_type << std::endl;
+                setPixelFormat(before_pixel_type);
+            }
+            if (before_gain > 0)
+            {
+                std::cout << "设置before_gain为：" << before_gain << std::endl;
+                setGain(before_gain);
+            }
+            switchToExternalTriggerMode();
+            // MV_CC_SetEnumValue(handle_, "TriggerMode", 0);
+            std::cout << "相机重启成功，SN号为：" << before_camera_sn << std::endl;
+            return true;
+        }
+
+    }
+    std::cout << "相机重启失败！" << std::endl;
+    
+}
+
 
 
 

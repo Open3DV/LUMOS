@@ -47,6 +47,8 @@ public:
 	bool setPixelFormat(int val);
 
 	bool printInfo();
+
+	bool rebootCamera();
 private:
 	void streamOffThread();
 private:
@@ -64,4 +66,10 @@ private:
 	MV_FRAME_OUT_INFO_EX stImageInfo_;
 
 	bool camera_is_opened_;
+
+	int exposure_time_now_;
+
+	int pixel_type_now_;
+
+	int gain_now_;
 };
