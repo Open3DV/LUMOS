@@ -145,7 +145,7 @@ int Scan3D::init()
         }
         camera_rgb_->getImageSize(rgb_image_width_, rgb_image_height_);
         cv::Mat img_tepm(rgb_image_height_, rgb_image_width_, CV_8UC3);
-        for (int i = 0; i < 10; i += 1)
+        for (int i = 0; i < 50; i += 1)
         {
             camera_rgb_->trigger_software();
             camera_rgb_->grap(img_tepm.data);
